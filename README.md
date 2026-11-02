@@ -294,6 +294,8 @@ Use price assertions carefully: totals depend on the selected products and displ
 
 The workflow in `.github/workflows/playwright.yml` runs the Playwright suite on pushes and pull requests. After each run, its GitHub Actions summary shows scenario pass/fail counts, pass rate, total run time, and each scenario's duration. The workflow also uploads the interactive HTML report and test results as a downloadable artifact (`playwright-report-and-results`).
 
+The `Publish test history` workflow collects each completed run with a Playwright report and publishes a dashboard containing historical pass rates, scenario counts, and suite durations. To enable it, open the repository's **Settings → Pages**, set the build and deployment source to **GitHub Actions**, and ensure Actions has permission to write repository contents. The history is stored on the `test-metrics-history` branch and includes push and pull-request runs. After its first successful deployment, open the workflow run or **Settings → Pages** to find the dashboard URL.
+
 To run the same checks locally:
 
 ```sh

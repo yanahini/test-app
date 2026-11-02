@@ -1,0 +1,110 @@
+name: Publish test history
+
+on:
+  workflow_run:
+    workflows: ['Playwright tests']
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    if: github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out the trusted default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Check for test metrics
+        id: metrics
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id,
+            });
+            const found = data.artifacts.some(
+              artifact => artifact.name === 'test-run-metrics' && !artifact.expired
+            );
+            core.setOutput('available', String(found));
+
+      - name: Download test metrics
+        if: steps.metrics.outputs.available == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: test-run-metrics
+          path: downloaded-metrics
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build historical dashboard
+        if: steps.metrics.outputs.available == 'true'
+        env:
+          METRICS_FILE: downloaded-metrics/results.json
+          HISTORY_DIR: ${{ runner.temp }}/test-history-site
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+          UPSTREAM_RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          UPSTREAM_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          UPSTREAM_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          UPSTREAM_SHA: ${{ github.event.workflow_run.head_sha }}
+          UPSTREAM_EVENT: ${{ github.event.workflow_run.event }}
+          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          UPSTREAM_COMPLETED_AT: ${{ github.event.workflow_run.updated_at }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if git ls-remote --exit-code --heads origin test-metrics-history >/dev/null 2>&1; then
+              git fetch origin test-metrics-history
+              git worktree add "$HISTORY_DIR" origin/test-metrics-history
+            else
+              git worktree add --orphan -b "metrics-${UPSTREAM_RUN_ID}-${UPSTREAM_RUN_ATTEMPT}-${attempt}" "$HISTORY_DIR"
+            fi
+
+            node scripts/build-test-history.mjs
+            git -C "$HISTORY_DIR" add history.json index.html
+            if git -C "$HISTORY_DIR" diff --cached --quiet; then
+              break
+            fi
+            git -C "$HISTORY_DIR" -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Update test history for run $UPSTREAM_RUN_ID"
+
+            if git -C "$HISTORY_DIR" push origin HEAD:test-metrics-history; then
+              break
+            fi
+
+            git worktree remove --force "$HISTORY_DIR"
+            if [ "$attempt" -eq 5 ]; then
+              echo "Could not update test metrics after 5 attempts." >&2
+              exit 1
+            fi
+            sleep "$attempt"
+          done
+          mkdir -p "$RUNNER_TEMP/test-history-site"
+          cp "$HISTORY_DIR/history.json" "$HISTORY_DIR/index.html" "$RUNNER_TEMP/test-history-site/"
+
+      - name: Configure GitHub Pages
+        if: steps.metrics.outputs.available == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: steps.metrics.outputs.available == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/test-history-site/
+
+      - name: Deploy dashboard to GitHub Pages
+        if: steps.metrics.outputs.available == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
