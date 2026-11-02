@@ -1,4 +1,4 @@
-# Sauce Demo: Playwright + Gherkin Test Documentation
+# Sauce Demo: Playwright + Gherkin Test Documentation 
 
 **Application:** [Sauce Demo](https://www.saucedemo.com/) (Swag Labs)  
 **Purpose:** Reference for building a small end-to-end test suite with Playwright, Gherkin, and `playwright-bdd`.  
