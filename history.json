@@ -1,0 +1,19 @@
+[
+  {
+    "id": "41460567489-1",
+    "runNumber": 6,
+    "url": "https://github.com/yanahini/test-app/actions/runs/41460567489",
+    "branch": "main",
+    "sha": "61a2f8abc8bad35f1ab09dfdabd277076fbb37c3",
+    "event": "push",
+    "conclusion": "failure",
+    "completedAt": "2026-11-02T14:18:48Z",
+    "total": 5,
+    "passed": 4,
+    "failed": 1,
+    "flaky": 0,
+    "skipped": 0,
+    "passRate": 80,
+    "durationMs": 0
+  }
+]
