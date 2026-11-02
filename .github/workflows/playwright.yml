@@ -29,11 +29,17 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Upload Playwright results
+      - name: Add test metrics to run summary
+        if: always() && hashFiles('test-results/results.json') != ''
+        run: node scripts/write-test-summary.mjs
+
+      - name: Upload Playwright report and results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
-          path: test-results/
+          name: playwright-report-and-results
+          path: |
+            playwright-report/
+            test-results/
           if-no-files-found: ignore
           retention-days: 7

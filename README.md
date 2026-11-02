@@ -292,7 +292,7 @@ Use price assertions carefully: totals depend on the selected products and displ
 
 ## 11. Run tests in GitHub Actions
 
-The workflow in `.github/workflows/playwright.yml` runs the Playwright suite on pushes and pull requests. It installs dependencies and Chromium, runs `npm test`, and uploads traces, screenshots, and other test results as a downloadable artifact.
+The workflow in `.github/workflows/playwright.yml` runs the Playwright suite on pushes and pull requests. After each run, its GitHub Actions summary shows scenario pass/fail counts, pass rate, total run time, and each scenario's duration. The workflow also uploads the interactive HTML report and test results as a downloadable artifact (`playwright-report-and-results`).
 
 To run the same checks locally:
 

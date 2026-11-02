@@ -8,6 +8,11 @@ const testDir = defineBddConfig({
 
 export default defineConfig({
   testDir,
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'test-results/results.json' }],
+  ],
   reportSlowTests: null,
   use: {
     baseURL: 'https://www.saucedemo.com',
