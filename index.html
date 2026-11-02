@@ -54,7 +54,7 @@
       row.append(element);
       return element;
     };
-    fetch('./history.json').then((response) => {
+    fetch('./history.json', { cache: 'no-store' }).then((response) => {
       if (!response.ok) throw new Error('Could not load test history.');
       return response.json();
     }).then((runs) => {
