@@ -14,7 +14,8 @@ if (!stats || typeof stats !== 'object') {
   throw new Error('Playwright JSON report does not include test statistics.');
 }
 
-const integer = (value) => Number.isSafeInteger(value) && value >= 0 ? value : 0;
+const integer = (value) =>
+  Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 const expected = integer(stats.expected);
 const unexpected = integer(stats.unexpected);
 const flaky = integer(stats.flaky);
@@ -120,7 +121,7 @@ const html = `<!doctype html>
       row.append(element);
       return element;
     };
-    fetch('./history.json').then((response) => {
+    fetch('./history.json', { cache: 'no-store' }).then((response) => {
       if (!response.ok) throw new Error('Could not load test history.');
       return response.json();
     }).then((runs) => {
