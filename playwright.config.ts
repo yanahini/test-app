@@ -1,7 +1,13 @@
 import { defineConfig } from '@playwright/test';
+import { defineBddConfig } from 'playwright-bdd';
+
+const testDir = defineBddConfig({
+  features: 'features/**/*.feature',
+  steps: ['steps/**/*.ts', 'fixtures/**/*.ts'],
+});
 
 export default defineConfig({
-  testDir: './tests',
+  testDir,
   reportSlowTests: null,
   use: {
     baseURL: 'https://www.saucedemo.com',

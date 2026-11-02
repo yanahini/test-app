@@ -1,4 +1,5 @@
-import { test as base, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test as base } from 'playwright-bdd';
 import { authSelectors } from '../selectors/auth.selectors';
 import { catalogSelectors } from '../selectors/catalog.selectors';
 import { cartSelectors } from '../selectors/cart.selectors';
