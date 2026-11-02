@@ -117,5 +117,22 @@
     "skipped": 0,
     "passRate": 100,
     "durationMs": 3554
+  },
+  {
+    "id": "41470962252-1",
+    "runNumber": 13,
+    "url": "https://github.com/yanahini/test-app/actions/runs/41470962252",
+    "branch": "main",
+    "sha": "e35e16a4d5aafb0e6f831a1994cc81e262425acb",
+    "event": "push",
+    "conclusion": "success",
+    "completedAt": "2026-11-02T15:23:18Z",
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0,
+    "passRate": 100,
+    "durationMs": 3749
   }
 ]
