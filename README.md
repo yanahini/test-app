@@ -289,3 +289,15 @@ Use price assertions carefully: totals depend on the selected products and displ
 - [Playwright BDD configuration](https://github.com/vitalets/playwright-bdd/blob/main/docs/configuration/index.md)
 - [Playwright locators](https://playwright.dev/docs/locators)
 - [Playwright assertions](https://playwright.dev/docs/test-assertions)
+
+## 11. Run tests in GitHub Actions
+
+The workflow in `.github/workflows/playwright.yml` runs the Playwright suite on pushes and pull requests. It installs dependencies and Chromium, runs `npm test`, and uploads traces, screenshots, and other test results as a downloadable artifact.
+
+To run the same checks locally:
+
+```sh
+npm ci
+npx playwright install chromium
+npm test
+```
