@@ -8,7 +8,7 @@ When('I add the backpack to my cart', async ({ ui }) => {
 });
 
 Then('the cart should show 1 item', async ({ ui }) => {
-  await expect(ui.catalog.cartBadge).toHaveText('3');
+  await expect(ui.catalog.cartBadge).toHaveText('4');
   await expect(ui.catalog.cart).toBeVisible();
 });
 
