@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QA quality dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f9f9f7;
+      --surface: #fcfcfb;
+      --ink: #0b0b0b;
+      --ink-2: #52514e;
+      --muted: #898781;
+      --grid: #e1e0d9;
+      --axis: #c3c2b7;
+      --border: rgba(11, 11, 11, 0.10);
+      --series: #2a78d6;
+      --good: #0ca30c;
+      --warning: #fab219;
+      --critical: #d03b3b;
+      --skipped: #c3c2b7;
+      --text-good: #006300;
+      --text-bad: #b42828;
+      font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --page: #0d0d0d;
+        --surface: #1a1a19;
+        --ink: #f0efec;
+        --ink-2: #c3c2b7;
+        --grid: #2c2c2a;
+        --axis: #383835;
+        --border: rgba(255, 255, 255, 0.10);
+        --series: #3987e5;
+        --skipped: #5d5c58;
+        --text-good: #0ca30c;
+        --text-bad: #e66767;
+      }
+    }
+    body { margin: 0; background: var(--page); color: var(--ink); }
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    h1 { margin: 0 0 .25rem; font-size: 1.6rem; }
+    h2 { margin: 2.5rem 0 .25rem; font-size: 1.15rem; }
+    h3 { margin: 0 0 .75rem; font-size: 1rem; }
+    p { margin: .25rem 0; }
+    a { color: var(--series); }
+    .muted { color: var(--muted); }
+    .secondary { color: var(--ink-2); }
+    .section-note { color: var(--ink-2); margin-bottom: 1rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; }
+    .latest { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; margin-top: 1rem; }
+    .filters { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0 1rem; }
+    .filters label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem; color: var(--ink-2); }
+    select { font: inherit; padding: .35rem .5rem; border-radius: 8px; border: 1px solid var(--axis); background: var(--surface); color: var(--ink); }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; }
+    .kpi-label { color: var(--ink-2); font-size: .85rem; }
+    .kpi-value { font-size: 1.75rem; font-weight: 600; margin: .2rem 0; }
+    .kpi-delta, .kpi-note { font-size: .8rem; }
+    .kpi-note { color: var(--muted); }
+    .better { color: var(--text-good); }
+    .worse { color: var(--text-bad); }
+    .unchanged { color: var(--ink-2); }
+    .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 1rem; }
+    .chart-wide { grid-column: 1 / -1; }
+    .chart { width: 100%; min-height: 220px; }
+    .legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .8rem; color: var(--ink-2); margin-bottom: .5rem; }
+    .legend span { display: inline-flex; align-items: center; gap: .4rem; }
+    .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    svg text { font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--muted); font-variant-numeric: tabular-nums; }
+    svg .end-label { fill: var(--ink-2); font-weight: 600; }
+    svg .grid { stroke: var(--grid); stroke-width: 1; }
+    svg .axis { stroke: var(--axis); stroke-width: 1; }
+    svg .line { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    svg .area { fill: var(--series); opacity: .1; }
+    svg .dot { fill: var(--series); stroke: var(--surface); stroke-width: 2; }
+    svg .crosshair { stroke: var(--axis); stroke-width: 1; }
+    svg .hit { fill: transparent; cursor: default; }
+    svg .column-hover { fill: var(--ink); opacity: .05; }
+    .tooltip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .7rem; font-size: .8rem; box-shadow: 0 6px 20px rgba(0, 0, 0, .15); min-width: 150px; }
+    .tooltip strong { display: block; margin-bottom: .25rem; }
+    .tooltip div { display: flex; justify-content: space-between; gap: 1rem; }
+    .tooltip span:first-child { display: inline-flex; align-items: center; gap: .35rem; color: var(--ink-2); }
+    .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 1rem; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+    th, td { padding: .55rem .6rem; border-bottom: 1px solid var(--grid); text-align: left; vertical-align: top; }
+    th { font-size: .8rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+    td.num, th.num { text-align: right; white-space: nowrap; }
+    td.nowrap { white-space: nowrap; }
+    td.error { font: .78rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); min-width: 240px; max-width: 420px; word-break: break-word; }
+    .scenario-name { display: block; min-width: 12rem; }
+    .scenario-feature { display: block; font-size: .78rem; color: var(--muted); }
+    .badge { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; }
+    .badge-icon { display: inline-grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: 50%; color: #fff; font-size: .7rem; font-weight: 700; }
+    .badge-good .badge-icon { background: var(--good); }
+    .badge-warning .badge-icon { background: var(--warning); color: #0b0b0b; }
+    .badge-critical .badge-icon { background: var(--critical); }
+    .badge-neutral .badge-icon { background: var(--skipped); color: #0b0b0b; }
+    .empty { color: var(--muted); padding: .5rem 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>QA quality dashboard</h1>
+  <p class="secondary">Suite health, stability, and speed across CI runs of the Playwright suite.</p>
+  <div id="latest" class="latest card" hidden></div>
+
+  <div class="filters">
+    <label>Branch
+      <select id="branch-filter"><option value="all">All branches</option></select>
+    </label>
+    <label>Window
+      <select id="window-filter">
+        <option value="10">Last 10 runs</option>
+        <option value="30" selected>Last 30 runs</option>
+        <option value="all">All runs</option>
+      </select>
+    </label>
+  </div>
+
+  <p id="status" class="empty">Loading test history…</p>
+
+  <div id="content" hidden>
+    <section class="kpis" id="kpis" aria-label="Key quality metrics"></section>
+
+    <h2>Trends</h2>
+    <p class="section-note">Each column or point is one CI run. Hover for details.</p>
+    <div class="charts">
+      <div class="card chart-wide">
+        <h3>Scenario outcomes per run</h3>
+        <div class="legend" id="outcome-legend"></div>
+        <div class="chart" id="outcome-chart"></div>
+      </div>
+      <div class="card">
+        <h3>Test pass rate</h3>
+        <div class="chart" id="pass-chart"></div>
+      </div>
+      <div class="card">
+        <h3>Suite duration</h3>
+        <div class="chart" id="duration-chart"></div>
+      </div>
+    </div>
+
+    <h2>Feature health</h2>
+    <p class="section-note" id="detail-note"></p>
+    <div class="card table-wrap" id="feature-table"></div>
+
+    <h2>Scenario risks</h2>
+    <div class="tables">
+      <div class="card">
+        <h3>Failing most often</h3>
+        <div class="table-wrap" id="failing-table"></div>
+      </div>
+      <div class="card">
+        <h3>Flaky scenarios</h3>
+        <p class="kpi-note">Passed only after a retry.</p>
+        <div class="table-wrap" id="flaky-table"></div>
+      </div>
+      <div class="card">
+        <h3>Slowest scenarios</h3>
+        <div class="table-wrap" id="slow-table"></div>
+      </div>
+      <div class="card">
+        <h3>Top failure reasons</h3>
+        <div class="table-wrap" id="reasons-table"></div>
+      </div>
+    </div>
+
+    <h2>Run history</h2>
+    <div class="card table-wrap" id="runs-table"></div>
+  </div>
+</main>
+<div class="tooltip" id="tooltip" hidden></div>
+
+<script>
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const $ = (id) => document.getElementById(id);
+
+  const html = (tag, attrs = {}, text) => {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+    if (text !== undefined) node.textContent = String(text);
+    return node;
+  };
+  const svg = (tag, attrs = {}) => {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+    return node;
+  };
+
+  const formatDuration = (ms) => {
+    if (!Number.isFinite(ms)) return '—';
+    const seconds = ms / 1000;
+    if (seconds < 10) return seconds.toFixed(2) + 's';
+    if (seconds < 60) return seconds.toFixed(1) + 's';
+    return Math.floor(seconds / 60) + 'm ' + Math.round(seconds % 60) + 's';
+  };
+  const formatSpan = (ms) => {
+    const minutes = ms / 60000;
+    if (minutes < 60) return Math.max(1, Math.round(minutes)) + ' min';
+    if (minutes < 48 * 60) return (minutes / 60).toFixed(1) + ' h';
+    return (minutes / 1440).toFixed(1) + ' days';
+  };
+  const pct = (value, digits = 1) => (Number.isFinite(value) ? value.toFixed(digits) + '%' : '—');
+  const ratio = (part, whole) => (whole ? (part / whole) * 100 : NaN);
+  const sum = (list, key) => list.reduce((total, item) => total + (item[key] || 0), 0);
+  const median = (values) => {
+    if (!values.length) return NaN;
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = sorted.length >> 1;
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+  const percentile = (values, p) => {
+    if (!values.length) return NaN;
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1))];
+  };
+  const average = (values) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : NaN);
+  const relative = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const ago = (iso) => {
+    const seconds = (new Date(iso) - Date.now()) / 1000;
+    for (const [unit, size] of [['day', 86400], ['hour', 3600], ['minute', 60]]) {
+      if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
+    }
+    return 'just now';
+  };
+  const niceStep = (value) => {
+    if (!(value > 0)) return 1;
+    const magnitude = 10 ** Math.floor(Math.log10(value));
+    const fraction = value / magnitude;
+    const nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5 : fraction <= 5 ? 5 : 10;
+    return nice * magnitude;
+  };
+  const isGreen = (run) => run.total > 0 && run.failed === 0;
+  const safeUrl = (url) => (typeof url === 'string' && url.startsWith('https://github.com/') ? url : null);
+  const link = (text, url) => {
+    const href = safeUrl(url);
+    if (!href) return document.createTextNode(text);
+    const anchor = html('a', { href, rel: 'noopener noreferrer' }, text);
+    return anchor;
+  };
+  const commitUrl = (run) => {
+    const base = safeUrl(run.url)?.replace(/\/actions\/runs\/.*$/, '');
+    return base && run.sha ? base + '/commit/' + run.sha : null;
+  };
+
+  const badge = (tone, icon, label) => {
+    const node = html('span', { class: 'badge badge-' + tone });
+    node.append(html('span', { class: 'badge-icon', 'aria-hidden': 'true' }, icon), document.createTextNode(label));
+    return node;
+  };
+  const runBadge = (run) => {
+    if (run.total === 0) return badge('neutral', '–', 'No tests ran');
+    if (run.failed > 0) return badge('critical', '✕', 'Failed');
+    if (run.flaky > 0) return badge('warning', '!', 'Passed with flaky');
+    return badge('good', '✓', 'Passed');
+  };
+
+  // Tooltip
+  const tooltip = $('tooltip');
+  const showTooltip = (event, title, rows) => {
+    tooltip.replaceChildren(html('strong', {}, title));
+    for (const row of rows) {
+      const line = html('div');
+      const label = html('span');
+      if (row.color) label.append(html('span', { class: 'swatch', style: 'background:' + row.color }));
+      label.append(document.createTextNode(row.label));
+      line.append(label, html('span', {}, row.value));
+      tooltip.append(line);
+    }
+    tooltip.hidden = false;
+    moveTooltip(event);
+  };
+  const moveTooltip = (event) => {
+    const { width, height } = tooltip.getBoundingClientRect();
+    let left = event.clientX + 14;
+    let top = event.clientY + 14;
+    if (left + width > window.innerWidth - 8) left = event.clientX - width - 14;
+    if (top + height > window.innerHeight - 8) top = event.clientY - height - 14;
+    tooltip.style.left = Math.max(8, left) + 'px';
+    tooltip.style.top = Math.max(8, top) + 'px';
+  };
+  const hideTooltip = () => { tooltip.hidden = true; };
+
+  // Chart frame: axes, gridlines, run labels, and per-run hover bands
+  function chartFrame(container, runs, yMax, formatTick, onHover) {
+    container.replaceChildren();
+    const width = Math.max(280, container.clientWidth);
+    const height = 220;
+    const margin = { top: 12, right: 52, bottom: 28, left: 48 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    const root = svg('svg', { width, height, viewBox: `0 0 ${width} ${height}` });
+    container.append(root);
+
+    const y = (value) => margin.top + innerHeight - (value / yMax) * innerHeight;
+    const band = innerWidth / runs.length;
+    const x = (index) => margin.left + band * (index + 0.5);
+
+    for (let tick = 0; tick <= 4; tick += 1) {
+      const value = (yMax * tick) / 4;
+      root.append(svg('line', { x1: margin.left, x2: margin.left + innerWidth, y1: y(value), y2: y(value), class: tick === 0 ? 'axis' : 'grid' }));
+      const label = svg('text', { x: margin.left - 8, y: y(value), 'text-anchor': 'end', 'dominant-baseline': 'middle' });
+      label.textContent = formatTick(value);
+      root.append(label);
+    }
+
+    const every = Math.max(1, Math.ceil(runs.length / Math.max(1, Math.floor(innerWidth / 44))));
+    runs.forEach((run, index) => {
+      if ((runs.length - 1 - index) % every !== 0) return;
+      const label = svg('text', { x: x(index), y: margin.top + innerHeight + 18, 'text-anchor': 'middle' });
+      label.textContent = '#' + run.runNumber;
+      root.append(label);
+    });
+
+    const hoverLayer = svg('g');
+    const marksLayer = svg('g');
+    const overlay = svg('g');
+    root.append(hoverLayer, marksLayer, overlay);
+
+    runs.forEach((run, index) => {
+      const hit = svg('rect', { x: margin.left + band * index, y: margin.top, width: band, height: innerHeight, class: 'hit' });
+      hit.addEventListener('pointerenter', (event) => onHover(index, event, true));
+      hit.addEventListener('pointermove', moveTooltip);
+      hit.addEventListener('pointerleave', (event) => onHover(index, event, false));
+      root.append(hit);
+    });
+
+    return { root, x, y, band, margin, innerWidth, innerHeight, hoverLayer, marksLayer, overlay };
+  }
+
+  const OUTCOMES = [
+    { key: 'passedClean', label: 'Passed', color: 'var(--good)' },
+    { key: 'flaky', label: 'Flaky', color: 'var(--warning)' },
+    { key: 'failed', label: 'Failed', color: 'var(--critical)' },
+    { key: 'skipped', label: 'Skipped', color: 'var(--skipped)' },
+  ];
+
+  const roundedTop = (x, top, width, height, radius) => {
+    const r = Math.min(radius, height, width / 2);
+    return `M${x},${top + height} V${top + r} Q${x},${top} ${x + r},${top} H${x + width - r} Q${x + width},${top} ${x + width},${top + r} V${top + height} Z`;
+  };
+
+  function outcomeChart(container, runs) {
+    const rows = runs.map((run) => ({ ...run, passedClean: Math.max(0, run.passed - run.flaky) }));
+    const step = niceStep(Math.max(1, ...rows.map((run) => run.total)) / 4);
+    let highlight = null;
+    const frame = chartFrame(container, rows, step * 4, (value) => String(Math.round(value)), (index, event, entering) => {
+      highlight?.remove();
+      if (!entering) return hideTooltip();
+      const run = rows[index];
+      highlight = svg('rect', { x: frame.margin.left + frame.band * index, y: frame.margin.top, width: frame.band, height: frame.innerHeight, class: 'column-hover' });
+      frame.hoverLayer.append(highlight);
+      showTooltip(event, 'Run #' + run.runNumber + ' · ' + new Date(run.completedAt).toLocaleString(), [
+        ...OUTCOMES.map((outcome) => ({ label: outcome.label, value: run[outcome.key] || 0, color: outcome.color })),
+        { label: 'Branch', value: run.branch || '—' },
+      ]);
+    });
+    const barWidth = Math.min(24, frame.band * 0.7);
+    rows.forEach((run, index) => {
+      const segments = OUTCOMES.filter((outcome) => run[outcome.key] > 0);
+      let base = 0;
+      segments.forEach((outcome, position) => {
+        const bottom = frame.y(base) - (position > 0 ? 2 : 0);
+        base += run[outcome.key];
+        const top = frame.y(base);
+        const height = bottom - top;
+        if (height <= 0) return;
+        const left = frame.x(index) - barWidth / 2;
+        const mark = position === segments.length - 1
+          ? svg('path', { d: roundedTop(left, top, barWidth, height, 4), fill: outcome.color })
+          : svg('rect', { x: left, y: top, width: barWidth, height, fill: outcome.color });
+        frame.marksLayer.append(mark);
+      });
+    });
+  }
+
+  function lineChart(container, runs, { value, yMax, formatTick, formatValue, label }) {
+    const points = runs.map((run, index) => ({ run, index, value: value(run) }));
+    let hover = [];
+    const frame = chartFrame(container, runs, yMax, formatTick, (index, event, entering) => {
+      hover.forEach((node) => node.remove());
+      hover = [];
+      if (!entering) return hideTooltip();
+      const point = points[index];
+      const line = svg('line', { x1: frame.x(index), x2: frame.x(index), y1: frame.margin.top, y2: frame.margin.top + frame.innerHeight, class: 'crosshair' });
+      frame.hoverLayer.append(line);
+      hover.push(line);
+      if (Number.isFinite(point.value)) {
+        const dot = svg('circle', { cx: frame.x(index), cy: frame.y(point.value), r: 4, class: 'dot' });
+        frame.overlay.append(dot);
+        hover.push(dot);
+      }
+      showTooltip(event, 'Run #' + point.run.runNumber + ' · ' + new Date(point.run.completedAt).toLocaleString(), [
+        { label, value: Number.isFinite(point.value) ? formatValue(point.value) : 'Not recorded' },
+        { label: 'Branch', value: point.run.branch || '—' },
+      ]);
+    });
+
+    const valid = points.filter((point) => Number.isFinite(point.value));
+    if (!valid.length) return;
+    let pathData = '';
+    let previous = null;
+    for (const point of points) {
+      if (!Number.isFinite(point.value)) { previous = null; continue; }
+      pathData += (previous === null ? 'M' : 'L') + frame.x(point.index) + ',' + frame.y(point.value) + ' ';
+      previous = point;
+    }
+    const first = valid[0];
+    const last = valid.at(-1);
+    if (valid.length === points.filter((point) => point.index >= first.index && point.index <= last.index).length) {
+      const area = pathData + `L${frame.x(last.index)},${frame.y(0)} L${frame.x(first.index)},${frame.y(0)} Z`;
+      frame.marksLayer.append(svg('path', { d: area, class: 'area' }));
+    }
+    frame.marksLayer.append(svg('path', { d: pathData, class: 'line' }));
+    frame.marksLayer.append(svg('circle', { cx: frame.x(last.index), cy: frame.y(last.value), r: 4, class: 'dot' }));
+    const endLabel = svg('text', { x: frame.x(last.index) + 8, y: frame.y(last.value), 'dominant-baseline': 'middle', class: 'end-label' });
+    endLabel.textContent = formatValue(last.value);
+    frame.marksLayer.append(endLabel);
+  }
+
+  // Tables
+  function renderTable(container, columns, rows, emptyText) {
+    container.replaceChildren();
+    if (!rows.length) {
+      container.append(html('p', { class: 'empty' }, emptyText));
+      return;
+    }
+    const table = html('table');
+    const head = html('tr');
+    for (const column of columns) head.append(html('th', column.num ? { class: 'num' } : {}, column.label));
+    const thead = html('thead');
+    thead.append(head);
+    table.append(thead);
+    const body = html('tbody');
+    for (const row of rows) {
+      const tr = html('tr');
+      for (const column of columns) {
+        const td = html('td', column.className ? { class: column.className } : column.num ? { class: 'num' } : {});
+        const content = column.render(row);
+        if (content instanceof Node) td.append(content);
+        else td.textContent = content === undefined || content === null || content === '' ? '—' : String(content);
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+    table.append(body);
+    container.append(table);
+  }
+
+  const scenarioCell = (row) => {
+    const wrap = html('span');
+    wrap.append(html('span', { class: 'scenario-name' }, row.title), html('span', { class: 'scenario-feature' }, row.feature));
+    return wrap;
+  };
+  const runLink = (run) => (run ? link('#' + run.runNumber, run.url) : '—');
+
+  function aggregateScenarios(runs) {
+    const scenarios = new Map();
+    const reasons = new Map();
+    for (const run of runs) {
+      for (const scenario of run.scenarios) {
+        const key = scenario.feature + ' › ' + scenario.title;
+        let entry = scenarios.get(key);
+        if (!entry) {
+          entry = { feature: scenario.feature, title: scenario.title, runs: 0, passed: 0, flaky: 0, failed: 0, skipped: 0, durations: [], lastFailure: null, lastFlaky: null, latest: null };
+          scenarios.set(key, entry);
+        }
+        entry.runs += 1;
+        entry.latest = scenario;
+        if (scenario.status === 'expected') entry.passed += 1;
+        else if (scenario.status === 'flaky') { entry.flaky += 1; entry.lastFlaky = run; }
+        else if (scenario.status === 'skipped') entry.skipped += 1;
+        else { entry.failed += 1; entry.lastFailure = { run, error: scenario.error }; }
+        if (scenario.status !== 'skipped' && scenario.durationMs > 0) entry.durations.push(scenario.durationMs);
+
+        if (scenario.status === 'unexpected' || scenario.status === 'flaky') {
+          const message = scenario.error || 'No error message recorded';
+          let reason = reasons.get(message);
+          if (!reason) {
+            reason = { error: message, failed: 0, flaky: 0, scenarios: new Set(), lastRun: null };
+            reasons.set(message, reason);
+          }
+          reason[scenario.status === 'flaky' ? 'flaky' : 'failed'] += 1;
+          reason.scenarios.add(key);
+          reason.lastRun = run;
+        }
+      }
+    }
+    return { scenarios: [...scenarios.values()], reasons: [...reasons.values()] };
+  }
+
+  function renderKpis(runs, previous, scoped, windowLabel) {
+    const kpis = $('kpis');
+    kpis.replaceChildren();
+    const tile = ({ label, value, note, delta }) => {
+      const card = html('div', { class: 'card' });
+      card.append(html('div', { class: 'kpi-label' }, label), html('div', { class: 'kpi-value' }, value));
+      if (delta) card.append(html('div', { class: 'kpi-delta ' + delta.tone }, delta.text));
+      if (note) card.append(html('div', { class: 'kpi-note' }, note));
+      kpis.append(card);
+    };
+    const compare = (current, before, { unit, higherIsBetter, relativeChange }) => {
+      if (!previous.length || !Number.isFinite(current) || !Number.isFinite(before)) return null;
+      const change = relativeChange ? ratio(current - before, before) : current - before;
+      if (!Number.isFinite(change) || Math.abs(change) < 0.05) return { tone: 'unchanged', text: 'No change vs previous ' + previous.length + ' runs' };
+      const improved = change > 0 === higherIsBetter;
+      return {
+        tone: improved ? 'better' : 'worse',
+        text: (change > 0 ? '▲ ' : '▼ ') + Math.abs(change).toFixed(1) + unit + ' vs previous ' + previous.length + ' runs',
+      };
+    };
+    const greenRate = (list) => ratio(list.filter(isGreen).length, list.length);
+    const passRate = (list) => ratio(sum(list, 'passed'), sum(list, 'total'));
+    const flakyRate = (list) => ratio(sum(list, 'flaky'), sum(list, 'total'));
+    const medianDuration = (list) => median(list.map((run) => run.durationMs).filter((value) => value > 0));
+
+    const greenRuns = runs.filter(isGreen).length;
+    tile({
+      label: 'Green runs',
+      value: pct(greenRate(runs), 0),
+      delta: compare(greenRate(runs), greenRate(previous), { unit: ' pts', higherIsBetter: true }),
+      note: greenRuns + ' of ' + runs.length + ' runs had no failures',
+    });
+    tile({
+      label: 'Test pass rate',
+      value: pct(passRate(runs)),
+      delta: compare(passRate(runs), passRate(previous), { unit: ' pts', higherIsBetter: true }),
+      note: sum(runs, 'passed') + ' of ' + sum(runs, 'total') + ' scenario runs passed',
+    });
+    tile({
+      label: 'Flaky rate',
+      value: pct(flakyRate(runs)),
+      delta: compare(flakyRate(runs), flakyRate(previous), { unit: ' pts', higherIsBetter: false }),
+      note: sum(runs, 'flaky') + ' of ' + sum(runs, 'total') + ' scenario runs passed only on retry',
+    });
+    tile({
+      label: 'Median suite duration',
+      value: formatDuration(medianDuration(runs)),
+      delta: compare(medianDuration(runs), medianDuration(previous), { unit: '%', higherIsBetter: false, relativeChange: true }),
+      note: 'Slowest run ' + formatDuration(Math.max(...runs.map((run) => run.durationMs))),
+    });
+    const latest = runs.at(-1);
+    const growth = latest.total - runs[0].total;
+    tile({
+      label: 'Scenarios in suite',
+      value: String(latest.total),
+      note: (growth === 0 ? 'No change' : (growth > 0 ? '+' : '') + growth) + ' since run #' + runs[0].runNumber,
+    });
+
+    let openedAt = null;
+    const restores = [];
+    for (const run of runs) {
+      if (!isGreen(run)) openedAt ??= run.completedAt;
+      else if (openedAt) { restores.push(new Date(run.completedAt) - new Date(openedAt)); openedAt = null; }
+    }
+    let streak = 0;
+    for (let index = scoped.length - 1; index >= 0 && isGreen(scoped[index]); index -= 1) streak += 1;
+    const firstRed = [...scoped].reverse().find((run, index, list) => !isGreen(run) && (index === list.length - 1 || isGreen(list[index + 1])));
+    tile({
+      label: 'Mean time to restore',
+      value: restores.length ? formatSpan(average(restores)) : '—',
+      note: !isGreen(latest)
+        ? 'Red since run #' + (firstRed?.runNumber ?? latest.runNumber) + ' (' + ago(firstRed?.completedAt ?? latest.completedAt) + ')'
+        : streak + ' green run' + (streak === 1 ? '' : 's') + ' in a row' + (restores.length ? '' : ' · no recoveries in ' + windowLabel),
+    });
+  }
+
+  function renderLatest(scoped) {
+    const latest = scoped.at(-1);
+    const box = $('latest');
+    box.replaceChildren();
+    box.hidden = false;
+    box.append(html('strong', {}, 'Latest run'), runBadge(latest));
+    box.append(html('span', {}, latest.passed + ' of ' + latest.total + ' scenarios passed'));
+    box.append(html('span', { class: 'secondary' }, '#' + latest.runNumber + ' on ' + (latest.branch || 'unknown branch') + ' · ' + ago(latest.completedAt)));
+    box.append(link('View run', latest.url));
+  }
+
+  function renderFeatures(detailed) {
+    const features = new Map();
+    for (const run of detailed) {
+      for (const scenario of run.scenarios) {
+        let feature = features.get(scenario.feature);
+        if (!feature) {
+          feature = { name: scenario.feature, executions: 0, passed: 0, failed: 0, flaky: 0, durations: [], scenarios: 0 };
+          features.set(scenario.feature, feature);
+        }
+        if (scenario.status === 'skipped') continue;
+        feature.executions += 1;
+        if (scenario.status === 'expected' || scenario.status === 'flaky') feature.passed += 1;
+        if (scenario.status === 'flaky') feature.flaky += 1;
+        if (scenario.status === 'unexpected') feature.failed += 1;
+        if (scenario.durationMs > 0) feature.durations.push(scenario.durationMs);
+      }
+    }
+    for (const scenario of detailed.at(-1)?.scenarios ?? []) {
+      const feature = features.get(scenario.feature);
+      if (feature) feature.scenarios += 1;
+    }
+    const rows = [...features.values()].map((feature) => ({ ...feature, passRate: ratio(feature.passed, feature.executions) }))
+      .sort((a, b) => a.passRate - b.passRate || a.name.localeCompare(b.name));
+    renderTable($('feature-table'), [
+      { label: 'Feature', render: (row) => row.name },
+      {
+        label: 'Health',
+        render: (row) => (row.failed === 0 && row.flaky === 0 ? badge('good', '✓', 'Healthy')
+          : row.passRate >= 90 ? badge('warning', '!', 'Watch')
+          : badge('critical', '✕', 'At risk')),
+      },
+      { label: 'Scenarios', num: true, render: (row) => row.scenarios },
+      { label: 'Executions', num: true, render: (row) => row.executions },
+      { label: 'Pass rate', num: true, render: (row) => pct(row.passRate) },
+      { label: 'Failures', num: true, render: (row) => row.failed },
+      { label: 'Flaky', num: true, render: (row) => row.flaky },
+      { label: 'Avg scenario time', num: true, render: (row) => formatDuration(average(row.durations)) },
+    ], rows, 'No scenario-level data in this view yet.');
+  }
+
+  function renderScenarioTables(detailed) {
+    const { scenarios, reasons } = aggregateScenarios(detailed);
+    const emptyDetail = 'No scenario-level data in this view yet.';
+
+    renderTable($('failing-table'), [
+      { label: 'Scenario', render: scenarioCell },
+      { label: 'Failures', num: true, render: (row) => row.failed + ' of ' + row.runs },
+      { label: 'Rate', num: true, render: (row) => pct(ratio(row.failed, row.runs), 0) },
+      { label: 'Last failed', className: 'nowrap', render: (row) => runLink(row.lastFailure.run) },
+      { label: 'Last error', className: 'error', render: (row) => row.lastFailure.error },
+    ], scenarios.filter((row) => row.failed > 0).sort((a, b) => b.failed / b.runs - a.failed / a.runs || b.failed - a.failed).slice(0, 10),
+    detailed.length ? 'No scenario failed in this window.' : emptyDetail);
+
+    renderTable($('flaky-table'), [
+      { label: 'Scenario', render: scenarioCell },
+      { label: 'Flaky runs', num: true, render: (row) => row.flaky + ' of ' + row.runs },
+      { label: 'Rate', num: true, render: (row) => pct(ratio(row.flaky, row.runs), 0) },
+      { label: 'Last seen', className: 'nowrap', render: (row) => runLink(row.lastFlaky) },
+    ], scenarios.filter((row) => row.flaky > 0).sort((a, b) => b.flaky - a.flaky).slice(0, 10),
+    detailed.length ? 'No flaky scenarios in this window.' : emptyDetail);
+
+    renderTable($('slow-table'), [
+      { label: 'Scenario', render: scenarioCell },
+      { label: 'Average', num: true, render: (row) => formatDuration(average(row.durations)) },
+      { label: 'p95', num: true, render: (row) => formatDuration(percentile(row.durations, 95)) },
+      { label: 'Latest', num: true, render: (row) => formatDuration(row.latest.durationMs || NaN) },
+    ], scenarios.filter((row) => row.durations.length).sort((a, b) => average(b.durations) - average(a.durations)).slice(0, 10), emptyDetail);
+
+    renderTable($('reasons-table'), [
+      { label: 'Error', className: 'error', render: (row) => row.error },
+      { label: 'Failed', num: true, render: (row) => row.failed },
+      { label: 'Flaky', num: true, render: (row) => row.flaky },
+      { label: 'Scenarios', num: true, render: (row) => row.scenarios.size },
+      { label: 'Last seen', className: 'nowrap', render: (row) => runLink(row.lastRun) },
+    ], reasons.sort((a, b) => b.failed + b.flaky - (a.failed + a.flaky)).slice(0, 10),
+    detailed.length ? 'No failures recorded in this window.' : emptyDetail);
+  }
+
+  function renderRuns(runs) {
+    renderTable($('runs-table'), [
+      { label: 'Run', className: 'nowrap', render: (run) => runLink(run) },
+      { label: 'Completed', className: 'nowrap', render: (run) => new Date(run.completedAt).toLocaleString() },
+      { label: 'Branch', render: (run) => run.branch },
+      { label: 'Commit', render: (run) => (run.sha ? link(run.sha.slice(0, 7), commitUrl(run)) : '—') },
+      { label: 'Event', render: (run) => run.event },
+      { label: 'Result', render: runBadge },
+      { label: 'Passed', num: true, render: (run) => run.passed },
+      { label: 'Failed', num: true, render: (run) => run.failed },
+      { label: 'Flaky', num: true, render: (run) => run.flaky },
+      { label: 'Skipped', num: true, render: (run) => run.skipped },
+      { label: 'Pass rate', num: true, render: (run) => pct(run.passRate) },
+      { label: 'Duration', num: true, render: (run) => (run.durationMs > 0 ? formatDuration(run.durationMs) : '—') },
+    ], [...runs].reverse(), 'No runs recorded.');
+  }
+
+  let allRuns = [];
+
+  function render() {
+    const branch = $('branch-filter').value;
+    const windowValue = $('window-filter').value;
+    const scoped = allRuns.filter((run) => branch === 'all' || run.branch === branch);
+    if (!scoped.length) {
+      $('content').hidden = true;
+      $('status').hidden = false;
+      $('status').textContent = 'No runs recorded for this branch.';
+      return;
+    }
+    const size = windowValue === 'all' ? scoped.length : Number(windowValue);
+    const runs = scoped.slice(-size);
+    const previous = windowValue === 'all' ? [] : scoped.slice(-2 * size, -size);
+    const windowLabel = windowValue === 'all' ? 'all runs' : 'the last ' + size + ' runs';
+    const detailed = runs.filter((run) => Array.isArray(run.scenarios));
+
+    $('status').hidden = true;
+    $('content').hidden = false;
+    renderLatest(scoped);
+    renderKpis(runs, previous, scoped, windowLabel);
+
+    outcomeChart($('outcome-chart'), runs);
+    lineChart($('pass-chart'), runs, {
+      value: (run) => (run.total > 0 ? run.passRate : NaN),
+      yMax: 100,
+      formatTick: (value) => value + '%',
+      formatValue: (value) => pct(value, value % 1 ? 1 : 0),
+      label: 'Pass rate',
+    });
+    const durationStep = niceStep(Math.max(1000, ...runs.map((run) => run.durationMs)) / 4);
+    lineChart($('duration-chart'), runs, {
+      value: (run) => (run.durationMs > 0 ? run.durationMs : NaN),
+      yMax: durationStep * 4,
+      formatTick: (value) => Number((value / 1000).toFixed(2)) + 's',
+      formatValue: formatDuration,
+      label: 'Duration',
+    });
+
+    $('detail-note').textContent = detailed.length === runs.length
+      ? 'Based on ' + detailed.length + ' run' + (detailed.length === 1 ? '' : 's') + ' in ' + windowLabel + '.'
+      : detailed.length
+        ? 'Scenario-level detail covers ' + detailed.length + ' of ' + runs.length + ' runs in this view; it is recorded from run #' + detailed[0].runNumber + ' onward.'
+        : 'Scenario-level detail is recorded from the next CI run onward.';
+    renderFeatures(detailed);
+    renderScenarioTables(detailed);
+    renderRuns(runs);
+  }
+
+  const legend = $('outcome-legend');
+  for (const outcome of OUTCOMES) {
+    const item = html('span');
+    item.append(html('span', { class: 'swatch', style: 'background:' + outcome.color }), document.createTextNode(outcome.label));
+    legend.append(item);
+  }
+
+  $('branch-filter').addEventListener('change', render);
+  $('window-filter').addEventListener('change', render);
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => allRuns.length && render(), 150);
+  });
+
+  fetch('./history.json', { cache: 'no-store' })
+    .then((response) => {
+      if (!response.ok) throw new Error('Could not load test history.');
+      return response.json();
+    })
+    .then((runs) => {
+      allRuns = runs
+        .filter((run) => run && typeof run.completedAt === 'string')
+        .sort((a, b) => a.completedAt.localeCompare(b.completedAt));
+      if (!allRuns.length) {
+        $('status').textContent = 'No test runs have been recorded.';
+        return;
+      }
+      const branches = [...new Set([...allRuns].reverse().map((run) => run.branch).filter(Boolean))];
+      for (const name of branches) $('branch-filter').append(html('option', { value: name }, name));
+      if (branches.includes('main')) $('branch-filter').value = 'main';
+      render();
+    })
+    .catch((error) => {
+      $('content').hidden = true;
+      $('status').hidden = false;
+      $('status').textContent = error.message;
+    });
+</script>
+</body>
+</html>
