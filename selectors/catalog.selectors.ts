@@ -7,6 +7,8 @@ export const catalogSelectors = (page: Page) => ({
   cartBadge: page.locator('.shopping_cart_badge'),
   product: (name: string) => page.getByText(name, { exact: true }),
   addProduct: (slug: string) => page.locator(`[data-test="add-to-cart-${slug}"]`),
+  removeProduct: (slug: string) => page.locator(`[data-test="remove-${slug}"]`),
+  items: page.locator('.inventory_item'),
   itemPrices: page.locator('.inventory_item_price'),
   itemNames: page.locator('.inventory_item_name'),
 });

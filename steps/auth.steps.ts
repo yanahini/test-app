@@ -8,30 +8,44 @@ Given('I am on the Sauce Demo login page', async ({ page }) => {
   await page.goto('/');
 });
 
-When('I sign in as the standard user', async ({ ui }) => {
-  await ui.auth.username.fill(users.standard.username);
-  await ui.auth.password.fill(users.standard.password);
-  await ui.auth.login.click();
+When('I sign in as the standard user', async ({ signIn }) => {
+  await signIn(users.standard);
 });
 
-When('I sign in as the locked out user', async ({ ui }) => {
-  await ui.auth.username.fill(users.lockedOut.username);
-  await ui.auth.password.fill(users.lockedOut.password);
-  await ui.auth.login.click();
+When('I sign in as the locked out user', async ({ signIn }) => {
+  await signIn(users.lockedOut);
 });
 
-Then('I should see the product catalog', async ({ ui }) => {
+When('I sign in with username {string} and password {string}', async ({ signIn }, username: string, password: string) => {
+  await signIn({ username, password });
+});
+
+Then('I should see the product catalog', async ({ page, ui }) => {
+  await expect(page).toHaveURL(/\/inventory\.html$/);
   await expect(ui.catalog.title).toBeVisible();
 });
 
-Then('I should see a login error', async ({ ui }) => {
-  await expect(ui.auth.error).toContainText('Epic sadface');
+Then('I should see the login error {string}', async ({ page, ui }, message: string) => {
+  await expect(ui.auth.error).toHaveText(message);
+  await expect(page).not.toHaveURL(/\/inventory\.html$/);
 });
 
-Given('I am signed in as the standard user', async ({ page, ui }) => {
+Given('I am signed in as the standard user', async ({ page, ui, signIn }) => {
   await page.goto('/');
-  await ui.auth.username.fill(users.standard.username);
-  await ui.auth.password.fill(users.standard.password);
-  await ui.auth.login.click();
+  await signIn(users.standard);
   await expect(ui.catalog.title).toBeVisible();
+});
+
+When('I log out', async ({ ui }) => {
+  await ui.auth.menu.click();
+  await ui.auth.logout.click();
+});
+
+Then('I should be on the login page', async ({ page, ui }) => {
+  await expect(page).toHaveURL(/saucedemo\.com\/$/);
+  await expect(ui.auth.login).toBeVisible();
+});
+
+When('I open the inventory page without signing in', async ({ page }) => {
+  await page.goto('/inventory.html');
 });

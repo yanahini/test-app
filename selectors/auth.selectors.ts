@@ -5,4 +5,6 @@ export const authSelectors = (page: Page) => ({
   password: page.getByRole('textbox', { name: 'Password' }),
   login: page.getByRole('button', { name: 'Login' }),
   error: page.locator('[data-test="error"]'),
+  menu: page.getByRole('button', { name: 'Open Menu' }),
+  logout: page.locator('[data-test="logout-sidebar-link"]'),
 });

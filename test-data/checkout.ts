@@ -5,6 +5,6 @@ export const checkoutInfo = {
 };
 
 export const products = {
-  backpack: 'Sauce Labs Backpack',
-  bikeLight: 'Sauce Labs Bike Light',
+  backpack: { name: 'Sauce Labs Backpack', slug: 'sauce-labs-backpack' },
+  bikeLight: { name: 'Sauce Labs Bike Light', slug: 'sauce-labs-bike-light' },
 };

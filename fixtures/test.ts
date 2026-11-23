@@ -4,14 +4,18 @@ import { authSelectors } from '../selectors/auth.selectors';
 import { catalogSelectors } from '../selectors/catalog.selectors';
 import { cartSelectors } from '../selectors/cart.selectors';
 import { checkoutSelectors } from '../selectors/checkout.selectors';
+import type { User } from '../test-data/users';
+
+type Ui = {
+  auth: ReturnType<typeof authSelectors>;
+  catalog: ReturnType<typeof catalogSelectors>;
+  cart: ReturnType<typeof cartSelectors>;
+  checkout: ReturnType<typeof checkoutSelectors>;
+};
 
 export const test = base.extend<{
-  ui: {
-    auth: ReturnType<typeof authSelectors>;
-    catalog: ReturnType<typeof catalogSelectors>;
-    cart: ReturnType<typeof cartSelectors>;
-    checkout: ReturnType<typeof checkoutSelectors>;
-  };
+  ui: Ui;
+  signIn: (user: User) => Promise<void>;
 }>({
   ui: async ({ page }, use) => {
     await use({
@@ -19,6 +23,13 @@ export const test = base.extend<{
       catalog: catalogSelectors(page),
       cart: cartSelectors(page),
       checkout: checkoutSelectors(page),
+    });
+  },
+  signIn: async ({ ui }, use) => {
+    await use(async ({ username, password }) => {
+      await ui.auth.username.fill(username);
+      await ui.auth.password.fill(password);
+      await ui.auth.login.click();
     });
   },
 });

@@ -14,6 +14,8 @@ export default defineConfig({
     ['json', { outputFile: 'test-results/results.json' }],
   ],
   reportSlowTests: null,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
   use: {
     baseURL: 'https://www.saucedemo.com',
     screenshot: 'only-on-failure',

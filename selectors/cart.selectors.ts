@@ -5,6 +5,7 @@ export const cartSelectors = (page: Page) => ({
   checkout: page.getByRole('button', { name: 'Checkout' }),
   continueShopping: page.getByRole('button', { name: 'Continue Shopping' }),
   item: (name: string) => page.getByText(name, { exact: true }),
+  items: page.locator('.cart_item'),
   removeBackpack: page.locator('[data-test="remove-sauce-labs-backpack"]'),
   quantity: page.locator('.cart_quantity'),
 });

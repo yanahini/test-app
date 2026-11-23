@@ -10,4 +10,8 @@ export const checkoutSelectors = (page: Page) => ({
   backHome: page.getByRole('button', { name: 'Back Home' }),
   overview: page.getByText('Checkout: Overview', { exact: true }),
   summary: page.getByText('Checkout: Your Information', { exact: true }),
+  error: page.locator('[data-test="error"]'),
+  itemTotal: page.locator('.summary_subtotal_label'),
+  tax: page.locator('.summary_tax_label'),
+  total: page.locator('.summary_total_label'),
 });

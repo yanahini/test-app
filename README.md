@@ -57,6 +57,8 @@ export const users = {
   standard: { username: 'standard_user', password: 'secret_sauce' },
   lockedOut: { username: 'locked_out_user', password: 'secret_sauce' },
 };
+
+export type User = (typeof users)[keyof typeof users];
 ```
 
 Use `standard_user` for the baseline happy path. Use the other accounts only for targeted behavior checks; account behavior can be intentionally unusual. These are public demo credentials, not credentials for a personal account.
@@ -70,14 +72,16 @@ export const checkoutInfo = {
 };
 
 export const products = {
-  backpack: 'Sauce Labs Backpack',
-  bikeLight: 'Sauce Labs Bike Light',
+  backpack: { name: 'Sauce Labs Backpack', slug: 'sauce-labs-backpack' },
+  bikeLight: { name: 'Sauce Labs Bike Light', slug: 'sauce-labs-bike-light' },
 };
 ```
 
+Each product keeps its display name and the slug used in its add/remove `data-test` IDs together, so steps never hardcode either.
+
 ## 4. Selector catalog
 
-Prefer accessible roles and labels. IDs below were visible in the application during inspection; keep selectors centralized so changes are easy to update.
+Prefer accessible roles and labels. IDs below were visible in the application during inspection; keep selectors centralized so changes are easy to update. Steps should use these selectors rather than writing locators inline.
 
 ```ts
 // selectors/auth.selectors.ts
@@ -88,6 +92,8 @@ export const authSelectors = (page: Page) => ({
   password: page.getByRole('textbox', { name: 'Password' }),
   login: page.getByRole('button', { name: 'Login' }),
   error: page.locator('[data-test="error"]'),
+  menu: page.getByRole('button', { name: 'Open Menu' }),
+  logout: page.locator('[data-test="logout-sidebar-link"]'),
 });
 ```
 
@@ -97,10 +103,15 @@ import type { Page } from '@playwright/test';
 
 export const catalogSelectors = (page: Page) => ({
   title: page.getByText('Products', { exact: true }),
-  sort: page.getByRole('combobox', { name: 'Sort' }),
-  cart: page.getByRole('button', { name: /cart/i }),
+  sort: page.locator('[data-test="product-sort-container"]'),
+  cart: page.locator('.shopping_cart_link'),
+  cartBadge: page.locator('.shopping_cart_badge'),
   product: (name: string) => page.getByText(name, { exact: true }),
   addProduct: (slug: string) => page.locator(`[data-test="add-to-cart-${slug}"]`),
+  removeProduct: (slug: string) => page.locator(`[data-test="remove-${slug}"]`),
+  items: page.locator('.inventory_item'),
+  itemPrices: page.locator('.inventory_item_price'),
+  itemNames: page.locator('.inventory_item_name'),
 });
 ```
 
@@ -113,7 +124,9 @@ export const cartSelectors = (page: Page) => ({
   checkout: page.getByRole('button', { name: 'Checkout' }),
   continueShopping: page.getByRole('button', { name: 'Continue Shopping' }),
   item: (name: string) => page.getByText(name, { exact: true }),
+  items: page.locator('.cart_item'),
   removeBackpack: page.locator('[data-test="remove-sauce-labs-backpack"]'),
+  quantity: page.locator('.cart_quantity'),
 });
 ```
 
@@ -129,12 +142,20 @@ export const checkoutSelectors = (page: Page) => ({
   finish: page.getByRole('button', { name: 'Finish' }),
   confirmation: page.getByRole('heading', { name: 'Thank you for your order!' }),
   backHome: page.getByRole('button', { name: 'Back Home' }),
+  overview: page.getByText('Checkout: Overview', { exact: true }),
+  summary: page.getByText('Checkout: Your Information', { exact: true }),
+  error: page.locator('[data-test="error"]'),
+  itemTotal: page.locator('.summary_subtotal_label'),
+  tax: page.locator('.summary_tax_label'),
+  total: page.locator('.summary_total_label'),
 });
 ```
 
 Product add/remove IDs use the product's slug as shown in the DOM. For other products, derive and verify the ID from the live page before using it. If a semantic locator is ambiguous, scope it to the product card (for example, a container filtered by product name) instead of relying on element order.
 
 ## 5. Gherkin scenarios
+
+The suite covers 18 scenarios. Validation cases use `Scenario Outline` tables so each error message is checked exactly, and checkout scenarios share their setup through a `Background`.
 
 ```gherkin
 # features/auth/login.feature
@@ -148,7 +169,27 @@ Feature: Login
   Scenario: A locked out user cannot sign in
     Given I am on the Sauce Demo login page
     When I sign in as the locked out user
-    Then I should see a login error
+    Then I should see the login error "Epic sadface: Sorry, this user has been locked out."
+
+  Scenario Outline: Sign in is rejected for invalid credentials
+    Given I am on the Sauce Demo login page
+    When I sign in with username "<username>" and password "<password>"
+    Then I should see the login error "<error>"
+
+    Examples:
+      | username      | password       | error                                                                     |
+      | standard_user | wrong_password | Epic sadface: Username and password do not match any user in this service |
+      |               | secret_sauce   | Epic sadface: Username is required                                        |
+      | standard_user |                | Epic sadface: Password is required                                        |
+
+  Scenario: A signed in user can log out
+    Given I am signed in as the standard user
+    When I log out
+    Then I should be on the login page
+
+  Scenario: Protected pages require sign in
+    When I open the inventory page without signing in
+    Then I should see the login error "Epic sadface: You can only access '/inventory.html' when you are logged in."
 ```
 
 ```gherkin
@@ -158,44 +199,87 @@ Feature: Product catalog
   Background:
     Given I am signed in as the standard user
 
+  Scenario: The catalog lists all products
+    Then I should see 6 products
+
   Scenario: Add a product to the cart
     When I add the backpack to my cart
     Then the cart should show 1 item
 
+  Scenario: Add several products to the cart
+    When I add the backpack to my cart
+    And I add the bike light to my cart
+    Then the cart should show 2 items
+
+  Scenario: Remove a product from the cart
+    Given I add the backpack to my cart
+    When I remove the backpack from my cart
+    Then the cart should be empty
+
   Scenario: Sort products by price from low to high
     When I sort products by price from low to high
     Then products should be ordered from lowest to highest price
+
+  Scenario: Sort products by price from high to low
+    When I sort products by price from high to low
+    Then products should be ordered from highest to lowest price
+
+  Scenario: Sort products by name from Z to A
+    When I sort products by name from Z to A
+    Then products should be ordered by name from Z to A
 ```
 
 ```gherkin
 # features/checkout/checkout.feature
 Feature: Checkout
 
-  Scenario: Complete checkout with one product
+  Background:
     Given I am signed in as the standard user
     And I have the backpack in my cart
+
+  Scenario: Complete checkout with one product
     When I enter valid checkout information
-    And I review and finish the order
+    Then the order total should equal the item total plus tax
+    When I finish the order
     Then I should see the order confirmation
+    And the cart should be empty
+
+  Scenario Outline: Checkout requires customer information
+    When I start checkout
+    And I continue with first name "<firstName>", last name "<lastName>" and postal code "<postalCode>"
+    Then I should see the checkout error "<error>"
+
+    Examples:
+      | firstName | lastName | postalCode | error                          |
+      |           | User     | 75001      | Error: First Name is required  |
+      | Test      |          | 75001      | Error: Last Name is required   |
+      | Test      | User     |            | Error: Postal Code is required |
 ```
 
 ## 6. Playwright fixtures
 
+The `ui` fixture exposes every selector group, and the `signIn` fixture fills and submits the login form so no step repeats that sequence.
+
 ```ts
 // fixtures/test.ts
-import { test as base, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test as base } from 'playwright-bdd';
 import { authSelectors } from '../selectors/auth.selectors';
 import { catalogSelectors } from '../selectors/catalog.selectors';
 import { cartSelectors } from '../selectors/cart.selectors';
 import { checkoutSelectors } from '../selectors/checkout.selectors';
+import type { User } from '../test-data/users';
+
+type Ui = {
+  auth: ReturnType<typeof authSelectors>;
+  catalog: ReturnType<typeof catalogSelectors>;
+  cart: ReturnType<typeof cartSelectors>;
+  checkout: ReturnType<typeof checkoutSelectors>;
+};
 
 export const test = base.extend<{
-  ui: {
-    auth: ReturnType<typeof authSelectors>;
-    catalog: ReturnType<typeof catalogSelectors>;
-    cart: ReturnType<typeof cartSelectors>;
-    checkout: ReturnType<typeof checkoutSelectors>;
-  };
+  ui: Ui;
+  signIn: (user: User) => Promise<void>;
 }>({
   ui: async ({ page }, use) => {
     await use({
@@ -205,17 +289,24 @@ export const test = base.extend<{
       checkout: checkoutSelectors(page),
     });
   },
+  signIn: async ({ ui }, use) => {
+    await use(async ({ username, password }) => {
+      await ui.auth.username.fill(username);
+      await ui.auth.password.fill(password);
+      await ui.auth.login.click();
+    });
+  },
 });
 
 export { expect };
 ```
 
-## 7. Example step definitions
+## 7. Step definitions
 
 ```ts
 // steps/auth.steps.ts
 import { createBdd } from 'playwright-bdd';
-import { test, expect } from '../fixtures/test';
+import { expect, test } from '../fixtures/test';
 import { users } from '../test-data/users';
 
 const { Given, When, Then } = createBdd(test);
@@ -224,30 +315,190 @@ Given('I am on the Sauce Demo login page', async ({ page }) => {
   await page.goto('/');
 });
 
-When('I sign in as the standard user', async ({ ui }) => {
-  await ui.auth.username.fill(users.standard.username);
-  await ui.auth.password.fill(users.standard.password);
-  await ui.auth.login.click();
+When('I sign in as the standard user', async ({ signIn }) => {
+  await signIn(users.standard);
 });
 
-Given('I am signed in as the standard user', async ({ page, ui }) => {
+When('I sign in as the locked out user', async ({ signIn }) => {
+  await signIn(users.lockedOut);
+});
+
+When('I sign in with username {string} and password {string}', async ({ signIn }, username: string, password: string) => {
+  await signIn({ username, password });
+});
+
+Then('I should see the product catalog', async ({ page, ui }) => {
+  await expect(page).toHaveURL(/\/inventory\.html$/);
+  await expect(ui.catalog.title).toBeVisible();
+});
+
+Then('I should see the login error {string}', async ({ page, ui }, message: string) => {
+  await expect(ui.auth.error).toHaveText(message);
+  await expect(page).not.toHaveURL(/\/inventory\.html$/);
+});
+
+Given('I am signed in as the standard user', async ({ page, ui, signIn }) => {
   await page.goto('/');
-  await ui.auth.username.fill(users.standard.username);
-  await ui.auth.password.fill(users.standard.password);
-  await ui.auth.login.click();
+  await signIn(users.standard);
   await expect(ui.catalog.title).toBeVisible();
 });
 
-Then('I should see the product catalog', async ({ ui }) => {
-  await expect(ui.catalog.title).toBeVisible();
+When('I log out', async ({ ui }) => {
+  await ui.auth.menu.click();
+  await ui.auth.logout.click();
+});
+
+Then('I should be on the login page', async ({ page, ui }) => {
+  await expect(page).toHaveURL(/saucedemo\.com\/$/);
+  await expect(ui.auth.login).toBeVisible();
+});
+
+When('I open the inventory page without signing in', async ({ page }) => {
+  await page.goto('/inventory.html');
 });
 ```
 
-Example checkout steps should add an item, open the cart, continue to checkout, fill the three fields, verify the overview, finish, and assert the confirmation heading. Keep these steps focused; avoid a single generic step that performs the entire scenario invisibly.
+```ts
+// steps/catalog.steps.ts
+import { createBdd } from 'playwright-bdd';
+import { expect, test } from '../fixtures/test';
+import { products } from '../test-data/checkout';
+
+const { When, Then } = createBdd(test);
+
+const toPrice = (text: string) => Number.parseFloat(text.replace(/[^0-9.]/g, ''));
+
+Then('I should see {int} products', async ({ ui }, count: number) => {
+  await expect(ui.catalog.items).toHaveCount(count);
+});
+
+When('I add the backpack to my cart', async ({ ui }) => {
+  await ui.catalog.addProduct(products.backpack.slug).click();
+  await expect(ui.catalog.removeProduct(products.backpack.slug)).toBeVisible();
+});
+
+When('I add the bike light to my cart', async ({ ui }) => {
+  await ui.catalog.addProduct(products.bikeLight.slug).click();
+  await expect(ui.catalog.removeProduct(products.bikeLight.slug)).toBeVisible();
+});
+
+When('I remove the backpack from my cart', async ({ ui }) => {
+  await ui.catalog.removeProduct(products.backpack.slug).click();
+  await expect(ui.catalog.addProduct(products.backpack.slug)).toBeVisible();
+});
+
+Then(/^the cart should show (\d+) items?$/, async ({ ui }, count: number) => {
+  await expect(ui.catalog.cartBadge).toHaveText(String(count));
+});
+
+Then('the cart should be empty', async ({ ui }) => {
+  await expect(ui.catalog.cartBadge).toHaveCount(0);
+});
+
+When('I sort products by price from low to high', async ({ ui }) => {
+  await ui.catalog.sort.selectOption('lohi');
+});
+
+When('I sort products by price from high to low', async ({ ui }) => {
+  await ui.catalog.sort.selectOption('hilo');
+});
+
+When('I sort products by name from Z to A', async ({ ui }) => {
+  await ui.catalog.sort.selectOption('za');
+});
+
+Then('products should be ordered from lowest to highest price', async ({ ui }) => {
+  const prices = (await ui.catalog.itemPrices.allTextContents()).map(toPrice);
+  expect(prices).toHaveLength(6);
+  expect(prices).toEqual([...prices].sort((a, b) => a - b));
+});
+
+Then('products should be ordered from highest to lowest price', async ({ ui }) => {
+  const prices = (await ui.catalog.itemPrices.allTextContents()).map(toPrice);
+  expect(prices).toHaveLength(6);
+  expect(prices).toEqual([...prices].sort((a, b) => b - a));
+});
+
+Then('products should be ordered by name from Z to A', async ({ ui }) => {
+  const names = await ui.catalog.itemNames.allTextContents();
+  expect(names).toHaveLength(6);
+  expect(names).toEqual([...names].sort((a, b) => b.localeCompare(a)));
+});
+```
+
+```ts
+// steps/checkout.steps.ts
+import { createBdd } from 'playwright-bdd';
+import { expect, test } from '../fixtures/test';
+import { checkoutInfo, products } from '../test-data/checkout';
+
+const { Given, When, Then } = createBdd(test);
+
+const toAmount = (text: string | null) => Number.parseFloat((text ?? '').replace(/[^0-9.]/g, ''));
+
+Given('I have the backpack in my cart', async ({ ui }) => {
+  await ui.catalog.addProduct(products.backpack.slug).click();
+  await ui.catalog.cart.click();
+  await expect(ui.cart.heading).toBeVisible();
+  await expect(ui.cart.items).toHaveCount(1);
+  await expect(ui.cart.item(products.backpack.name)).toBeVisible();
+});
+
+When('I start checkout', async ({ ui }) => {
+  await ui.cart.checkout.click();
+  await expect(ui.checkout.summary).toBeVisible();
+});
+
+When(
+  'I continue with first name {string}, last name {string} and postal code {string}',
+  async ({ ui }, firstName: string, lastName: string, postalCode: string) => {
+    await ui.checkout.firstName.fill(firstName);
+    await ui.checkout.lastName.fill(lastName);
+    await ui.checkout.postalCode.fill(postalCode);
+    await ui.checkout.continue.click();
+  },
+);
+
+When('I enter valid checkout information', async ({ ui }) => {
+  await ui.cart.checkout.click();
+  await expect(ui.checkout.summary).toBeVisible();
+  await ui.checkout.firstName.fill(checkoutInfo.firstName);
+  await ui.checkout.lastName.fill(checkoutInfo.lastName);
+  await ui.checkout.postalCode.fill(checkoutInfo.postalCode);
+  await ui.checkout.continue.click();
+  await expect(ui.checkout.overview).toBeVisible();
+  await expect(ui.cart.item(products.backpack.name)).toBeVisible();
+});
+
+Then('the order total should equal the item total plus tax', async ({ ui }) => {
+  const itemTotal = toAmount(await ui.checkout.itemTotal.textContent());
+  const tax = toAmount(await ui.checkout.tax.textContent());
+  const total = toAmount(await ui.checkout.total.textContent());
+
+  expect(itemTotal).toBeGreaterThan(0);
+  expect(total).toBeCloseTo(itemTotal + tax, 2);
+});
+
+When('I finish the order', async ({ ui }) => {
+  await ui.checkout.finish.click();
+});
+
+Then('I should see the order confirmation', async ({ page, ui }) => {
+  await expect(page).toHaveURL(/\/checkout-complete\.html$/);
+  await expect(ui.checkout.confirmation).toBeVisible();
+});
+
+Then('I should see the checkout error {string}', async ({ page, ui }, message: string) => {
+  await expect(ui.checkout.error).toHaveText(message);
+  await expect(page).toHaveURL(/\/checkout-step-one\.html$/);
+});
+```
+
+Keep steps focused; avoid a single generic step that performs the entire scenario invisibly. Steps that change state (adding or removing a product, opening a page) wait for the visible result, and assertions compare exact text, URLs, and full sort orders so a failure shows what actually differed.
 
 ## 8. Playwright BDD configuration
 
-Install `@playwright/test` and `playwright-bdd` using the versions appropriate for the project. `playwright-bdd` generates Playwright tests from `.feature` files; use its current official setup instructions when wiring the CLI scripts.
+Install `@playwright/test` and `playwright-bdd` using the versions appropriate for the project. `playwright-bdd` generates Playwright tests from `.feature` files; `npm test` runs `bddgen` and then `playwright test`.
 
 ```ts
 // playwright.config.ts
@@ -256,18 +507,33 @@ import { defineBddConfig } from 'playwright-bdd';
 
 const testDir = defineBddConfig({
   features: 'features/**/*.feature',
-  steps: 'steps/**/*.ts',
+  steps: ['steps/**/*.ts', 'fixtures/**/*.ts'],
 });
 
 export default defineConfig({
   testDir,
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'test-results/results.json' }],
+  ],
+  reportSlowTests: null,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
   use: {
     baseURL: 'https://www.saucedemo.com',
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
+    video: 'retain-on-failure',
+  },
+  timeout: 30000,
+  expect: {
+    timeout: 10000,
   },
 });
 ```
+
+On CI, each failed test is retried once so `trace: 'on-first-retry'` captures a trace, and `forbidOnly` fails the run if a `test.only` was committed by mistake.
 
 Consult the current `playwright-bdd` documentation for the matching `bddgen` scripts and run commands because its setup API and CLI may evolve.
 
