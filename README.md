@@ -4,6 +4,8 @@
 **Purpose:** Reference for building a small end-to-end test suite with Playwright, Gherkin, and `playwright-bdd`.  
 **Scope covered:** Login and logout, product catalog and sorting, product details, cart, checkout and order confirmation, and the navigation menu.
 
+> Applying these practices to healthcare software? See the [Healthcare QA guide](docs/HEALTHCARE-QA.md) for risk-based testing, patient data, traceability, and the regulations to know.
+
 > Sauce Demo is a public training application. Its UI and demo data can change. Keep tests isolated, avoid real personal information, and treat a successful demo checkout as a simulated flow.
 
 ## 1. Main user journey
