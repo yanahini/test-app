@@ -613,5 +613,304 @@
         "error": ""
       }
     ]
+  },
+  {
+    "id": "45160290984-1",
+    "runNumber": 17,
+    "url": "https://github.com/yanahini/test-app/actions/runs/45160290984",
+    "branch": "main",
+    "sha": "12cd3a982a0c916c70790917fa20783d53b5809b",
+    "event": "push",
+    "conclusion": "success",
+    "completedAt": "2026-11-23T10:55:20Z",
+    "total": 35,
+    "passed": 35,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0,
+    "passRate": 100,
+    "durationMs": 19940,
+    "scenarios": [
+      {
+        "feature": "Login",
+        "title": "A standard user signs in",
+        "status": "expected",
+        "durationMs": 1037,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "A locked out user cannot sign in",
+        "status": "expected",
+        "durationMs": 666,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "A signed in user can log out",
+        "status": "expected",
+        "durationMs": 1715,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "A logged out user cannot return to the catalog",
+        "status": "expected",
+        "durationMs": 1772,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "Protected pages require sign in",
+        "status": "expected",
+        "durationMs": 569,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "Sign in is rejected for invalid credentials › Example #1",
+        "status": "expected",
+        "durationMs": 701,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "Sign in is rejected for invalid credentials › Example #2",
+        "status": "expected",
+        "durationMs": 634,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "Sign in is rejected for invalid credentials › Example #3",
+        "status": "expected",
+        "durationMs": 608,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Cart",
+        "title": "The cart lists each product with its quantity and price",
+        "status": "expected",
+        "durationMs": 1248,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Cart",
+        "title": "Remove a product from the cart page",
+        "status": "expected",
+        "durationMs": 1061,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Cart",
+        "title": "Continue shopping keeps the cart",
+        "status": "expected",
+        "durationMs": 997,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Cart",
+        "title": "The cart is kept after reloading the page",
+        "status": "expected",
+        "durationMs": 1125,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "The catalog lists every product with its price",
+        "status": "expected",
+        "durationMs": 606,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Products are sorted by name from A to Z by default",
+        "status": "expected",
+        "durationMs": 665,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Add a product to the cart",
+        "status": "expected",
+        "durationMs": 746,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Add several products to the cart",
+        "status": "expected",
+        "durationMs": 814,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Remove a product from the catalog",
+        "status": "expected",
+        "durationMs": 790,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Sort products › Example #1",
+        "status": "expected",
+        "durationMs": 762,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Sort products › Example #2",
+        "status": "expected",
+        "durationMs": 672,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Sort products › Example #3",
+        "status": "expected",
+        "durationMs": 757,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Complete checkout with one product",
+        "status": "expected",
+        "durationMs": 996,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "The overview summarises a multi-product order",
+        "status": "expected",
+        "durationMs": 1021,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Back Home returns to the catalog after an order",
+        "status": "expected",
+        "durationMs": 1141,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Cancelling on the information step returns to the cart",
+        "status": "expected",
+        "durationMs": 838,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Cancelling on the overview returns to the catalog and keeps the cart",
+        "status": "expected",
+        "durationMs": 1066,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Checkout requires customer information › Example #1",
+        "status": "expected",
+        "durationMs": 799,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Checkout requires customer information › Example #2",
+        "status": "expected",
+        "durationMs": 915,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Checkout requires customer information › Example #3",
+        "status": "expected",
+        "durationMs": 953,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Navigation menu",
+        "title": "All Items returns to the catalog",
+        "status": "expected",
+        "durationMs": 1786,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Navigation menu",
+        "title": "Reset App State empties the cart",
+        "status": "expected",
+        "durationMs": 1827,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Navigation menu",
+        "title": "The About link points to Sauce Labs",
+        "status": "expected",
+        "durationMs": 801,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product details",
+        "title": "Product details match the catalog",
+        "status": "expected",
+        "durationMs": 738,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product details",
+        "title": "Add a product from its details page",
+        "status": "expected",
+        "durationMs": 729,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product details",
+        "title": "Remove a product from its details page",
+        "status": "expected",
+        "durationMs": 633,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product details",
+        "title": "An unknown product shows a not found page",
+        "status": "expected",
+        "durationMs": 647,
+        "retries": 0,
+        "error": ""
+      }
+    ]
   }
 ]
