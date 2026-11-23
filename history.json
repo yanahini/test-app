@@ -151,5 +151,168 @@
     "skipped": 0,
     "passRate": 100,
     "durationMs": 8117
+  },
+  {
+    "id": "45153243573-1",
+    "runNumber": 15,
+    "url": "https://github.com/yanahini/test-app/actions/runs/45153243573",
+    "branch": "main",
+    "sha": "28c1f8c77094c79f9a4eca50187e052b5b3e5b37",
+    "event": "push",
+    "conclusion": "success",
+    "completedAt": "2026-11-23T10:08:29Z",
+    "total": 18,
+    "passed": 18,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0,
+    "passRate": 100,
+    "durationMs": 9307,
+    "scenarios": [
+      {
+        "feature": "Login",
+        "title": "A standard user signs in",
+        "status": "expected",
+        "durationMs": 902,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "A locked out user cannot sign in",
+        "status": "expected",
+        "durationMs": 532,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "A signed in user can log out",
+        "status": "expected",
+        "durationMs": 1530,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "Protected pages require sign in",
+        "status": "expected",
+        "durationMs": 457,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "Sign in is rejected for invalid credentials › Example #1",
+        "status": "expected",
+        "durationMs": 495,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "Sign in is rejected for invalid credentials › Example #2",
+        "status": "expected",
+        "durationMs": 477,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Login",
+        "title": "Sign in is rejected for invalid credentials › Example #3",
+        "status": "expected",
+        "durationMs": 486,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "The catalog lists all products",
+        "status": "expected",
+        "durationMs": 816,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Add a product to the cart",
+        "status": "expected",
+        "durationMs": 740,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Add several products to the cart",
+        "status": "expected",
+        "durationMs": 750,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Remove a product from the cart",
+        "status": "expected",
+        "durationMs": 728,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Sort products by price from low to high",
+        "status": "expected",
+        "durationMs": 678,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Sort products by price from high to low",
+        "status": "expected",
+        "durationMs": 524,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Product catalog",
+        "title": "Sort products by name from Z to A",
+        "status": "expected",
+        "durationMs": 703,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Complete checkout with one product",
+        "status": "expected",
+        "durationMs": 750,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Checkout requires customer information › Example #1",
+        "status": "expected",
+        "durationMs": 663,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Checkout requires customer information › Example #2",
+        "status": "expected",
+        "durationMs": 741,
+        "retries": 0,
+        "error": ""
+      },
+      {
+        "feature": "Checkout",
+        "title": "Checkout requires customer information › Example #3",
+        "status": "expected",
+        "durationMs": 769,
+        "retries": 0,
+        "error": ""
+      }
+    ]
   }
 ]
