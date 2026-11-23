@@ -5,7 +5,9 @@
   "scripts": {
     "test": "npx bddgen && npx playwright test",
     "test:headed": "npx bddgen && npx playwright test --headed",
-    "test:debug": "npx bddgen && npx playwright test --debug"
+    "test:debug": "npx bddgen && npx playwright test --debug",
+    "test:high-risk": "npx bddgen && npx playwright test --grep @risk-high",
+    "trace": "node scripts/build-traceability.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

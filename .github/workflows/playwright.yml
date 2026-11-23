@@ -33,6 +33,12 @@ jobs:
         if: always() && hashFiles('test-results/results.json') != ''
         run: node scripts/write-test-summary.mjs
 
+      - name: Build traceability matrix (IEC 62304 §5.7, ISO 14971 §7.2)
+        if: always()
+        run: |
+          node scripts/build-traceability.mjs --strict
+          cat test-results/traceability-matrix.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload Playwright report and results
         if: always()
         uses: actions/upload-artifact@v4

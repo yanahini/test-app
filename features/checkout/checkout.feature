@@ -4,6 +4,7 @@ Feature: Checkout
     Given I am signed in as the standard user
     And I add "Sauce Labs Backpack" to my cart
 
+  @REQ-008 @REQ-009 @RISK-001 @RISK-003 @risk-high
   Scenario: Complete checkout with one product
     Given I open my cart
     When I enter valid checkout information
@@ -12,6 +13,7 @@ Feature: Checkout
     Then I should see the order confirmation
     And the cart should be empty
 
+  @REQ-008 @RISK-001 @risk-high
   Scenario: The overview summarises a multi-product order
     Given I add "Sauce Labs Bike Light" to my cart
     And I open my cart
@@ -26,6 +28,7 @@ Feature: Checkout
     And the payment information should be "SauceCard #31337"
     And the shipping information should be "Free Pony Express Delivery!"
 
+  @REQ-009 @RISK-003 @risk-medium
   Scenario: Back Home returns to the catalog after an order
     Given I open my cart
     And I enter valid checkout information
@@ -34,6 +37,7 @@ Feature: Checkout
     Then I should see the product catalog
     And the cart should be empty
 
+  @REQ-009 @RISK-003 @risk-medium
   Scenario: Cancelling on the information step returns to the cart
     Given I open my cart
     And I start checkout
@@ -43,6 +47,7 @@ Feature: Checkout
       | name                | quantity | price  |
       | Sauce Labs Backpack | 1        | $29.99 |
 
+  @REQ-009 @RISK-003 @risk-medium
   Scenario: Cancelling on the overview returns to the catalog and keeps the cart
     Given I open my cart
     And I enter valid checkout information
@@ -50,6 +55,7 @@ Feature: Checkout
     Then I should see the product catalog
     And the cart should show 1 item
 
+  @REQ-007 @RISK-004 @risk-medium
   Scenario Outline: Checkout requires customer information
     Given I open my cart
     When I start checkout

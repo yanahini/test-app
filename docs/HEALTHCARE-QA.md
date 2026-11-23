@@ -112,7 +112,7 @@ The dashboard published by the `Publish test history` workflow shows the signals
 
 | Gap | Suggested action |
 |---|---|
-| No requirement or risk tags | Add `@REQ-…` and `@risk-…` tags and generate a traceability matrix |
+| ~~No requirement or risk tags~~ | Done: scenarios carry `@REQ-…`, `@RISK-…` and `@risk-…` tags, and CI builds the matrix (`npm run trace`). See [docs/quality](quality/README.md) |
 | No accessibility checks | Add automated checks such as `@axe-core/playwright`, plus manual screen-reader and keyboard testing |
 | No security or privacy scenarios | Cover role-based access, session timeout, audit logging, and data export permissions |
 | Short evidence retention | Archive release evidence outside CI for the required retention period |
