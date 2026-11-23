@@ -3,31 +3,39 @@ Feature: Product catalog
   Background:
     Given I am signed in as the standard user
 
-  Scenario: The catalog lists all products
-    Then I should see 6 products
+  Scenario: The catalog lists every product with its price
+    Then the catalog should list these products:
+      | name                              | price  |
+      | Sauce Labs Backpack               | $29.99 |
+      | Sauce Labs Bike Light             | $9.99  |
+      | Sauce Labs Bolt T-Shirt           | $15.99 |
+      | Sauce Labs Fleece Jacket          | $49.99 |
+      | Sauce Labs Onesie                 | $7.99  |
+      | Test.allTheThings() T-Shirt (Red) | $15.99 |
+
+  Scenario: Products are sorted by name from A to Z by default
+    Then the products should be sorted by "Name (A to Z)"
+
+  Scenario Outline: Sort products
+    When I sort products by "<order>"
+    Then the products should be sorted by "<order>"
+
+    Examples:
+      | order               |
+      | Name (Z to A)       |
+      | Price (low to high) |
+      | Price (high to low) |
 
   Scenario: Add a product to the cart
-    When I add the backpack to my cart
+    When I add "Sauce Labs Backpack" to my cart
     Then the cart should show 1 item
 
   Scenario: Add several products to the cart
-    When I add the backpack to my cart
-    And I add the bike light to my cart
+    When I add "Sauce Labs Backpack" to my cart
+    And I add "Sauce Labs Bike Light" to my cart
     Then the cart should show 2 items
 
-  Scenario: Remove a product from the cart
-    Given I add the backpack to my cart
-    When I remove the backpack from my cart
+  Scenario: Remove a product from the catalog
+    Given I add "Sauce Labs Backpack" to my cart
+    When I remove "Sauce Labs Backpack" from my cart
     Then the cart should be empty
-
-  Scenario: Sort products by price from low to high
-    When I sort products by price from low to high
-    Then products should be ordered from lowest to highest price
-
-  Scenario: Sort products by price from high to low
-    When I sort products by price from high to low
-    Then products should be ordered from highest to lowest price
-
-  Scenario: Sort products by name from Z to A
-    When I sort products by name from Z to A
-    Then products should be ordered by name from Z to A

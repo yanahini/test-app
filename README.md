@@ -2,7 +2,7 @@
 
 **Application:** [Sauce Demo](https://www.saucedemo.com/) (Swag Labs)  
 **Purpose:** Reference for building a small end-to-end test suite with Playwright, Gherkin, and `playwright-bdd`.  
-**Scope observed:** Login, product catalog, product details, cart, checkout, and order confirmation.
+**Scope covered:** Login and logout, product catalog and sorting, product details, cart, checkout and order confirmation, and the navigation menu.
 
 > Sauce Demo is a public training application. Its UI and demo data can change. Keep tests isolated, avoid real personal information, and treat a successful demo checkout as a simulated flow.
 
@@ -19,7 +19,7 @@
 
 Observed routes include `/`, `/inventory.html`, `/inventory-item.html?id=...`, `/cart.html`, `/checkout-step-one.html`, `/checkout-step-two.html`, and `/checkout-complete.html`.
 
-## 2. Suggested project structure
+## 2. Project structure
 
 ```text
 project/
@@ -27,16 +27,24 @@ project/
 ├── features/
 │   ├── auth/login.feature
 │   ├── catalog/catalog.feature
-│   └── checkout/checkout.feature
+│   ├── product/product-details.feature
+│   ├── cart/cart.feature
+│   ├── checkout/checkout.feature
+│   └── navigation/menu.feature
 ├── steps/
 │   ├── auth.steps.ts
+│   ├── menu.steps.ts
 │   ├── catalog.steps.ts
+│   ├── product.steps.ts
+│   ├── cart.steps.ts
 │   └── checkout.steps.ts
 ├── fixtures/
 │   └── test.ts
 ├── selectors/
 │   ├── auth.selectors.ts
+│   ├── menu.selectors.ts
 │   ├── catalog.selectors.ts
+│   ├── product.selectors.ts
 │   ├── cart.selectors.ts
 │   └── checkout.selectors.ts
 ├── test-data/
@@ -45,7 +53,7 @@ project/
 └── package.json
 ```
 
-Keep Gherkin focused on business behavior. Keep locators in `selectors/`, reusable Playwright setup in `fixtures/`, and non-secret scenario data in `test-data/`.
+Keep Gherkin focused on business behavior. Keep locators in `selectors/`, reusable Playwright setup in `fixtures/`, and non-secret scenario data in `test-data/`. Product names and prices that a scenario checks live in the feature file itself (step arguments and data tables), so the expected behavior is readable in one place.
 
 ## 3. Demo data
 
@@ -70,18 +78,11 @@ export const checkoutInfo = {
   lastName: 'User',
   postalCode: '75001',
 };
-
-export const products = {
-  backpack: { name: 'Sauce Labs Backpack', slug: 'sauce-labs-backpack' },
-  bikeLight: { name: 'Sauce Labs Bike Light', slug: 'sauce-labs-bike-light' },
-};
 ```
-
-Each product keeps its display name and the slug used in its add/remove `data-test` IDs together, so steps never hardcode either.
 
 ## 4. Selector catalog
 
-Prefer accessible roles and labels. IDs below were visible in the application during inspection; keep selectors centralized so changes are easy to update. Steps should use these selectors rather than writing locators inline.
+Prefer accessible roles and labels, then `data-test` attributes. Keep selectors centralized so changes are easy to update; steps use these selectors rather than writing locators inline.
 
 ```ts
 // selectors/auth.selectors.ts
@@ -92,8 +93,17 @@ export const authSelectors = (page: Page) => ({
   password: page.getByRole('textbox', { name: 'Password' }),
   login: page.getByRole('button', { name: 'Login' }),
   error: page.locator('[data-test="error"]'),
-  menu: page.getByRole('button', { name: 'Open Menu' }),
-  logout: page.locator('[data-test="logout-sidebar-link"]'),
+});
+```
+
+```ts
+// selectors/menu.selectors.ts
+import type { Page } from '@playwright/test';
+
+export const menuSelectors = (page: Page) => ({
+  open: page.getByRole('button', { name: 'Open Menu' }),
+  close: page.getByRole('button', { name: 'Close Menu' }),
+  item: (label: string) => page.getByRole('navigation').getByText(label, { exact: true }),
 });
 ```
 
@@ -101,17 +111,39 @@ export const authSelectors = (page: Page) => ({
 // selectors/catalog.selectors.ts
 import type { Page } from '@playwright/test';
 
-export const catalogSelectors = (page: Page) => ({
-  title: page.getByText('Products', { exact: true }),
-  sort: page.locator('[data-test="product-sort-container"]'),
-  cart: page.locator('.shopping_cart_link'),
-  cartBadge: page.locator('.shopping_cart_badge'),
-  product: (name: string) => page.getByText(name, { exact: true }),
-  addProduct: (slug: string) => page.locator(`[data-test="add-to-cart-${slug}"]`),
-  removeProduct: (slug: string) => page.locator(`[data-test="remove-${slug}"]`),
-  items: page.locator('.inventory_item'),
-  itemPrices: page.locator('.inventory_item_price'),
-  itemNames: page.locator('.inventory_item_name'),
+export const catalogSelectors = (page: Page) => {
+  const productCard = (name: string) =>
+    page.locator('[data-test="inventory-item"]').filter({ has: page.getByText(name, { exact: true }) });
+
+  return {
+    title: page.getByText('Products', { exact: true }),
+    sort: page.locator('[data-test="product-sort-container"]'),
+    activeSort: page.locator('[data-test="active-option"]'),
+    cart: page.locator('[data-test="shopping-cart-link"]'),
+    cartBadge: page.locator('[data-test="shopping-cart-badge"]'),
+    product: (name: string) => page.locator('[data-test="inventory-item-name"]').getByText(name, { exact: true }),
+    productCard,
+    addProduct: (name: string) => productCard(name).getByRole('button', { name: 'Add to cart' }),
+    removeProduct: (name: string) => productCard(name).getByRole('button', { name: 'Remove' }),
+    items: page.locator('[data-test="inventory-item"]'),
+    itemPrices: page.locator('[data-test="inventory-item-price"]'),
+    itemNames: page.locator('[data-test="inventory-item-name"]'),
+  };
+};
+```
+
+```ts
+// selectors/product.selectors.ts
+import type { Page } from '@playwright/test';
+
+export const productSelectors = (page: Page) => ({
+  name: page.locator('[data-test="inventory-item-name"]'),
+  description: page.locator('[data-test="inventory-item-desc"]'),
+  price: page.locator('[data-test="inventory-item-price"]'),
+  image: page.locator('.inventory_details_img'),
+  addToCart: page.locator('[data-test="add-to-cart"]'),
+  remove: page.locator('[data-test="remove"]'),
+  backToProducts: page.locator('[data-test="back-to-products"]'),
 });
 ```
 
@@ -124,9 +156,10 @@ export const cartSelectors = (page: Page) => ({
   checkout: page.getByRole('button', { name: 'Checkout' }),
   continueShopping: page.getByRole('button', { name: 'Continue Shopping' }),
   item: (name: string) => page.getByText(name, { exact: true }),
-  items: page.locator('.cart_item'),
-  removeBackpack: page.locator('[data-test="remove-sauce-labs-backpack"]'),
-  quantity: page.locator('.cart_quantity'),
+  items: page.locator('[data-test="inventory-item"]'),
+  itemNames: page.locator('[data-test="inventory-item-name"]'),
+  itemQuantities: page.locator('[data-test="item-quantity"]'),
+  itemPrices: page.locator('[data-test="inventory-item-price"]'),
 });
 ```
 
@@ -139,23 +172,28 @@ export const checkoutSelectors = (page: Page) => ({
   lastName: page.getByRole('textbox', { name: 'Last Name' }),
   postalCode: page.getByRole('textbox', { name: 'Zip/Postal Code' }),
   continue: page.getByRole('button', { name: 'Continue' }),
+  cancel: page.getByRole('button', { name: 'Cancel' }),
   finish: page.getByRole('button', { name: 'Finish' }),
   confirmation: page.getByRole('heading', { name: 'Thank you for your order!' }),
   backHome: page.getByRole('button', { name: 'Back Home' }),
   overview: page.getByText('Checkout: Overview', { exact: true }),
   summary: page.getByText('Checkout: Your Information', { exact: true }),
   error: page.locator('[data-test="error"]'),
-  itemTotal: page.locator('.summary_subtotal_label'),
-  tax: page.locator('.summary_tax_label'),
-  total: page.locator('.summary_total_label'),
+  itemNames: page.locator('[data-test="inventory-item-name"]'),
+  itemPrices: page.locator('[data-test="inventory-item-price"]'),
+  paymentInfo: page.locator('[data-test="payment-info-value"]'),
+  shippingInfo: page.locator('[data-test="shipping-info-value"]'),
+  itemTotal: page.locator('[data-test="subtotal-label"]'),
+  tax: page.locator('[data-test="tax-label"]'),
+  total: page.locator('[data-test="total-label"]'),
 });
 ```
 
-Product add/remove IDs use the product's slug as shown in the DOM. For other products, derive and verify the ID from the live page before using it. If a semantic locator is ambiguous, scope it to the product card (for example, a container filtered by product name) instead of relying on element order.
+Product buttons are found through the product card that contains the product's name (`productCard`), so steps take any product name without hand-built `data-test` slugs. The catalog and cart pages render product cards with the same markup, so the same locator removes a product from either page.
 
 ## 5. Gherkin scenarios
 
-The suite covers 18 scenarios. Validation cases use `Scenario Outline` tables so each error message is checked exactly, and checkout scenarios share their setup through a `Background`.
+The suite covers 35 scenarios across login, the catalog, product details, the cart, checkout, and the navigation menu. Validation and sorting cases use `Scenario Outline` tables, expected products and prices are written as data tables, and shared setup lives in each feature's `Background`.
 
 ```gherkin
 # features/auth/login.feature
@@ -187,6 +225,12 @@ Feature: Login
     When I log out
     Then I should be on the login page
 
+  Scenario: A logged out user cannot return to the catalog
+    Given I am signed in as the standard user
+    And I log out
+    When I open the inventory page without signing in
+    Then I should see the login error "Epic sadface: You can only access '/inventory.html' when you are logged in."
+
   Scenario: Protected pages require sign in
     When I open the inventory page without signing in
     Then I should see the login error "Epic sadface: You can only access '/inventory.html' when you are logged in."
@@ -199,34 +243,109 @@ Feature: Product catalog
   Background:
     Given I am signed in as the standard user
 
-  Scenario: The catalog lists all products
-    Then I should see 6 products
+  Scenario: The catalog lists every product with its price
+    Then the catalog should list these products:
+      | name                              | price  |
+      | Sauce Labs Backpack               | $29.99 |
+      | Sauce Labs Bike Light             | $9.99  |
+      | Sauce Labs Bolt T-Shirt           | $15.99 |
+      | Sauce Labs Fleece Jacket          | $49.99 |
+      | Sauce Labs Onesie                 | $7.99  |
+      | Test.allTheThings() T-Shirt (Red) | $15.99 |
+
+  Scenario: Products are sorted by name from A to Z by default
+    Then the products should be sorted by "Name (A to Z)"
+
+  Scenario Outline: Sort products
+    When I sort products by "<order>"
+    Then the products should be sorted by "<order>"
+
+    Examples:
+      | order               |
+      | Name (Z to A)       |
+      | Price (low to high) |
+      | Price (high to low) |
 
   Scenario: Add a product to the cart
-    When I add the backpack to my cart
+    When I add "Sauce Labs Backpack" to my cart
     Then the cart should show 1 item
 
   Scenario: Add several products to the cart
-    When I add the backpack to my cart
-    And I add the bike light to my cart
+    When I add "Sauce Labs Backpack" to my cart
+    And I add "Sauce Labs Bike Light" to my cart
     Then the cart should show 2 items
 
-  Scenario: Remove a product from the cart
-    Given I add the backpack to my cart
-    When I remove the backpack from my cart
+  Scenario: Remove a product from the catalog
+    Given I add "Sauce Labs Backpack" to my cart
+    When I remove "Sauce Labs Backpack" from my cart
+    Then the cart should be empty
+```
+
+```gherkin
+# features/product/product-details.feature
+Feature: Product details
+
+  Background:
+    Given I am signed in as the standard user
+
+  Scenario: Product details match the catalog
+    When I open the details of "Sauce Labs Bolt T-Shirt"
+    Then I should see the details of "Sauce Labs Bolt T-Shirt" priced "$15.99"
+
+  Scenario: Add a product from its details page
+    Given I open the details of "Sauce Labs Fleece Jacket"
+    When I add the product to my cart from its details page
+    Then the cart should show 1 item
+    When I go back to the products
+    Then "Sauce Labs Fleece Jacket" should be marked as in my cart
+
+  Scenario: Remove a product from its details page
+    Given I add "Sauce Labs Onesie" to my cart
+    And I open the details of "Sauce Labs Onesie"
+    When I remove the product from my cart on its details page
     Then the cart should be empty
 
-  Scenario: Sort products by price from low to high
-    When I sort products by price from low to high
-    Then products should be ordered from lowest to highest price
+  Scenario: An unknown product shows a not found page
+    When I open the product page with id 99
+    Then I should see the product not found page
+```
 
-  Scenario: Sort products by price from high to low
-    When I sort products by price from high to low
-    Then products should be ordered from highest to lowest price
+```gherkin
+# features/cart/cart.feature
+Feature: Cart
 
-  Scenario: Sort products by name from Z to A
-    When I sort products by name from Z to A
-    Then products should be ordered by name from Z to A
+  Background:
+    Given I am signed in as the standard user
+    And I add "Sauce Labs Backpack" to my cart
+    And I add "Sauce Labs Onesie" to my cart
+    And I open my cart
+
+  Scenario: The cart lists each product with its quantity and price
+    Then my cart should contain:
+      | name                | quantity | price  |
+      | Sauce Labs Backpack | 1        | $29.99 |
+      | Sauce Labs Onesie   | 1        | $7.99  |
+
+  Scenario: Remove a product from the cart page
+    When I remove "Sauce Labs Onesie" from my cart
+    Then my cart should contain:
+      | name                | quantity | price  |
+      | Sauce Labs Backpack | 1        | $29.99 |
+    And the cart should show 1 item
+
+  Scenario: Continue shopping keeps the cart
+    When I continue shopping
+    Then I should see the product catalog
+    And the cart should show 2 items
+    And "Sauce Labs Onesie" should be marked as in my cart
+
+  Scenario: The cart is kept after reloading the page
+    When I reload the page
+    Then the cart should show 2 items
+    And my cart should contain:
+      | name                | quantity | price  |
+      | Sauce Labs Backpack | 1        | $29.99 |
+      | Sauce Labs Onesie   | 1        | $7.99  |
 ```
 
 ```gherkin
@@ -235,16 +354,56 @@ Feature: Checkout
 
   Background:
     Given I am signed in as the standard user
-    And I have the backpack in my cart
+    And I add "Sauce Labs Backpack" to my cart
 
   Scenario: Complete checkout with one product
+    Given I open my cart
     When I enter valid checkout information
     Then the order total should equal the item total plus tax
     When I finish the order
     Then I should see the order confirmation
     And the cart should be empty
 
+  Scenario: The overview summarises a multi-product order
+    Given I add "Sauce Labs Bike Light" to my cart
+    And I open my cart
+    When I enter valid checkout information
+    Then the order overview should list:
+      | name                  | price  |
+      | Sauce Labs Backpack   | $29.99 |
+      | Sauce Labs Bike Light | $9.99  |
+    And the item total should be "$39.98"
+    And the tax should be 8% of the item total
+    And the order total should equal the item total plus tax
+    And the payment information should be "SauceCard #31337"
+    And the shipping information should be "Free Pony Express Delivery!"
+
+  Scenario: Back Home returns to the catalog after an order
+    Given I open my cart
+    And I enter valid checkout information
+    And I finish the order
+    When I go back home
+    Then I should see the product catalog
+    And the cart should be empty
+
+  Scenario: Cancelling on the information step returns to the cart
+    Given I open my cart
+    And I start checkout
+    When I cancel checkout
+    Then I should see my cart
+    And my cart should contain:
+      | name                | quantity | price  |
+      | Sauce Labs Backpack | 1        | $29.99 |
+
+  Scenario: Cancelling on the overview returns to the catalog and keeps the cart
+    Given I open my cart
+    And I enter valid checkout information
+    When I cancel checkout
+    Then I should see the product catalog
+    And the cart should show 1 item
+
   Scenario Outline: Checkout requires customer information
+    Given I open my cart
     When I start checkout
     And I continue with first name "<firstName>", last name "<lastName>" and postal code "<postalCode>"
     Then I should see the checkout error "<error>"
@@ -254,6 +413,33 @@ Feature: Checkout
       |           | User     | 75001      | Error: First Name is required  |
       | Test      |          | 75001      | Error: Last Name is required   |
       | Test      | User     |            | Error: Postal Code is required |
+```
+
+```gherkin
+# features/navigation/menu.feature
+Feature: Navigation menu
+
+  Background:
+    Given I am signed in as the standard user
+
+  Scenario: All Items returns to the catalog
+    Given I add "Sauce Labs Backpack" to my cart
+    And I open my cart
+    When I choose "All Items" from the menu
+    Then I should see the product catalog
+    And the cart should show 1 item
+
+  Scenario: Reset App State empties the cart
+    Given I add "Sauce Labs Backpack" to my cart
+    And I add "Sauce Labs Bike Light" to my cart
+    When I reset the app state
+    Then the cart should be empty
+    When I open my cart
+    Then my cart should have no items
+
+  Scenario: The About link points to Sauce Labs
+    When I open the menu
+    Then the "About" menu link should point to "https://saucelabs.com/"
 ```
 
 ## 6. Playwright fixtures
@@ -268,11 +454,15 @@ import { authSelectors } from '../selectors/auth.selectors';
 import { catalogSelectors } from '../selectors/catalog.selectors';
 import { cartSelectors } from '../selectors/cart.selectors';
 import { checkoutSelectors } from '../selectors/checkout.selectors';
+import { menuSelectors } from '../selectors/menu.selectors';
+import { productSelectors } from '../selectors/product.selectors';
 import type { User } from '../test-data/users';
 
 type Ui = {
   auth: ReturnType<typeof authSelectors>;
+  menu: ReturnType<typeof menuSelectors>;
   catalog: ReturnType<typeof catalogSelectors>;
+  product: ReturnType<typeof productSelectors>;
   cart: ReturnType<typeof cartSelectors>;
   checkout: ReturnType<typeof checkoutSelectors>;
 };
@@ -284,7 +474,9 @@ export const test = base.extend<{
   ui: async ({ page }, use) => {
     await use({
       auth: authSelectors(page),
+      menu: menuSelectors(page),
       catalog: catalogSelectors(page),
+      product: productSelectors(page),
       cart: cartSelectors(page),
       checkout: checkoutSelectors(page),
     });
@@ -343,11 +535,6 @@ Given('I am signed in as the standard user', async ({ page, ui, signIn }) => {
   await expect(ui.catalog.title).toBeVisible();
 });
 
-When('I log out', async ({ ui }) => {
-  await ui.auth.menu.click();
-  await ui.auth.logout.click();
-});
-
 Then('I should be on the login page', async ({ page, ui }) => {
   await expect(page).toHaveURL(/saucedemo\.com\/$/);
   await expect(ui.auth.login).toBeVisible();
@@ -359,32 +546,74 @@ When('I open the inventory page without signing in', async ({ page }) => {
 ```
 
 ```ts
-// steps/catalog.steps.ts
+// steps/menu.steps.ts
 import { createBdd } from 'playwright-bdd';
 import { expect, test } from '../fixtures/test';
-import { products } from '../test-data/checkout';
 
 const { When, Then } = createBdd(test);
 
+When('I open the menu', async ({ ui }) => {
+  await ui.menu.open.click();
+  await expect(ui.menu.item('All Items')).toBeVisible();
+});
+
+When('I choose {string} from the menu', async ({ ui }, label: string) => {
+  await ui.menu.open.click();
+  await ui.menu.item(label).click();
+});
+
+When('I log out', async ({ ui }) => {
+  await ui.menu.open.click();
+  await ui.menu.item('Logout').click();
+});
+
+When('I reset the app state', async ({ ui }) => {
+  await ui.menu.open.click();
+  await ui.menu.item('Reset App State').click();
+  await ui.menu.close.click();
+});
+
+Then('the {string} menu link should point to {string}', async ({ ui }, label: string, url: string) => {
+  await expect(ui.menu.item(label)).toHaveAttribute('href', url);
+});
+```
+
+```ts
+// steps/catalog.steps.ts
+import { createBdd, type DataTable } from 'playwright-bdd';
+import { expect, test } from '../fixtures/test';
+
+const { Given, When, Then } = createBdd(test);
+
 const toPrice = (text: string) => Number.parseFloat(text.replace(/[^0-9.]/g, ''));
 
-Then('I should see {int} products', async ({ ui }, count: number) => {
-  await expect(ui.catalog.items).toHaveCount(count);
+type Product = { name: string; price: number };
+const sortOrders: Record<string, (a: Product, b: Product) => number> = {
+  'Name (A to Z)': (a, b) => a.name.localeCompare(b.name),
+  'Name (Z to A)': (a, b) => b.name.localeCompare(a.name),
+  'Price (low to high)': (a, b) => a.price - b.price,
+  'Price (high to low)': (a, b) => b.price - a.price,
+};
+
+Then('the catalog should list these products:', async ({ ui }, table: DataTable) => {
+  const names = await ui.catalog.itemNames.allTextContents();
+  const prices = await ui.catalog.itemPrices.allTextContents();
+  expect(names.map((name, index) => ({ name, price: prices[index] }))).toEqual(table.hashes());
 });
 
-When('I add the backpack to my cart', async ({ ui }) => {
-  await ui.catalog.addProduct(products.backpack.slug).click();
-  await expect(ui.catalog.removeProduct(products.backpack.slug)).toBeVisible();
+Given('I add {string} to my cart', async ({ ui }, name: string) => {
+  await ui.catalog.addProduct(name).click();
+  await expect(ui.catalog.removeProduct(name)).toBeVisible();
 });
 
-When('I add the bike light to my cart', async ({ ui }) => {
-  await ui.catalog.addProduct(products.bikeLight.slug).click();
-  await expect(ui.catalog.removeProduct(products.bikeLight.slug)).toBeVisible();
+When('I remove {string} from my cart', async ({ ui }, name: string) => {
+  // Product cards share the same markup on the catalog and cart pages.
+  await ui.catalog.removeProduct(name).click();
+  await expect(ui.catalog.removeProduct(name)).toHaveCount(0);
 });
 
-When('I remove the backpack from my cart', async ({ ui }) => {
-  await ui.catalog.removeProduct(products.backpack.slug).click();
-  await expect(ui.catalog.addProduct(products.backpack.slug)).toBeVisible();
+Then('{string} should be marked as in my cart', async ({ ui }, name: string) => {
+  await expect(ui.catalog.removeProduct(name)).toBeVisible();
 });
 
 Then(/^the cart should show (\d+) items?$/, async ({ ui }, count: number) => {
@@ -395,54 +624,120 @@ Then('the cart should be empty', async ({ ui }) => {
   await expect(ui.catalog.cartBadge).toHaveCount(0);
 });
 
-When('I sort products by price from low to high', async ({ ui }) => {
-  await ui.catalog.sort.selectOption('lohi');
+When('I sort products by {string}', async ({ ui }, order: string) => {
+  await ui.catalog.sort.selectOption({ label: order });
 });
 
-When('I sort products by price from high to low', async ({ ui }) => {
-  await ui.catalog.sort.selectOption('hilo');
-});
+Then('the products should be sorted by {string}', async ({ ui }, order: string) => {
+  const compare = sortOrders[order];
+  if (!compare) throw new Error(`Unknown sort order "${order}"`);
 
-When('I sort products by name from Z to A', async ({ ui }) => {
-  await ui.catalog.sort.selectOption('za');
-});
-
-Then('products should be ordered from lowest to highest price', async ({ ui }) => {
-  const prices = (await ui.catalog.itemPrices.allTextContents()).map(toPrice);
-  expect(prices).toHaveLength(6);
-  expect(prices).toEqual([...prices].sort((a, b) => a - b));
-});
-
-Then('products should be ordered from highest to lowest price', async ({ ui }) => {
-  const prices = (await ui.catalog.itemPrices.allTextContents()).map(toPrice);
-  expect(prices).toHaveLength(6);
-  expect(prices).toEqual([...prices].sort((a, b) => b - a));
-});
-
-Then('products should be ordered by name from Z to A', async ({ ui }) => {
+  await expect(ui.catalog.activeSort).toHaveText(order);
   const names = await ui.catalog.itemNames.allTextContents();
-  expect(names).toHaveLength(6);
-  expect(names).toEqual([...names].sort((a, b) => b.localeCompare(a)));
+  const prices = (await ui.catalog.itemPrices.allTextContents()).map(toPrice);
+  const products = names.map((name, index) => ({ name, price: prices[index] }));
+
+  expect(products).toHaveLength(6);
+  expect(products).toEqual([...products].sort(compare));
+});
+```
+
+```ts
+// steps/product.steps.ts
+import { createBdd } from 'playwright-bdd';
+import { expect, test } from '../fixtures/test';
+
+const { Given, When, Then } = createBdd(test);
+
+Given('I open the details of {string}', async ({ page, ui }, name: string) => {
+  await ui.catalog.product(name).click();
+  await expect(page).toHaveURL(/\/inventory-item\.html\?id=\d+$/);
+  // The URL changes before the details page renders, so wait for a details-only element.
+  await expect(ui.product.backToProducts).toBeVisible();
+  await expect(ui.product.name).toHaveText(name);
+});
+
+Then('I should see the details of {string} priced {string}', async ({ ui }, name: string, price: string) => {
+  await expect(ui.product.name).toHaveText(name);
+  await expect(ui.product.price).toHaveText(price);
+  await expect(ui.product.description).not.toBeEmpty();
+  await expect(ui.product.image).toBeVisible();
+  await expect(ui.product.addToCart).toBeVisible();
+});
+
+When('I add the product to my cart from its details page', async ({ ui }) => {
+  await ui.product.addToCart.click();
+  await expect(ui.product.remove).toBeVisible();
+});
+
+When('I remove the product from my cart on its details page', async ({ ui }) => {
+  await ui.product.remove.click();
+  await expect(ui.product.addToCart).toBeVisible();
+});
+
+When('I go back to the products', async ({ ui }) => {
+  await ui.product.backToProducts.click();
+  await expect(ui.catalog.title).toBeVisible();
+});
+
+When('I open the product page with id {int}', async ({ page, ui }, id: number) => {
+  await page.goto(`/inventory-item.html?id=${id}`);
+  await expect(ui.product.backToProducts).toBeVisible();
+});
+
+Then('I should see the product not found page', async ({ ui }) => {
+  await expect(ui.product.name).toHaveText('ITEM NOT FOUND');
+});
+```
+
+```ts
+// steps/cart.steps.ts
+import { createBdd, type DataTable } from 'playwright-bdd';
+import { expect, test } from '../fixtures/test';
+
+const { Given, When, Then } = createBdd(test);
+
+Given('I open my cart', async ({ ui }) => {
+  await ui.catalog.cart.click();
+  await expect(ui.cart.heading).toBeVisible();
+});
+
+Then('I should see my cart', async ({ page, ui }) => {
+  await expect(page).toHaveURL(/\/cart\.html$/);
+  await expect(ui.cart.heading).toBeVisible();
+});
+
+Then('my cart should contain:', async ({ ui }, table: DataTable) => {
+  await expect(ui.cart.items).toHaveCount(table.hashes().length);
+  const names = await ui.cart.itemNames.allTextContents();
+  const quantities = await ui.cart.itemQuantities.allTextContents();
+  const prices = await ui.cart.itemPrices.allTextContents();
+  const rows = names.map((name, index) => ({ name, quantity: quantities[index], price: prices[index] }));
+  expect(rows).toEqual(table.hashes());
+});
+
+Then('my cart should have no items', async ({ ui }) => {
+  await expect(ui.cart.items).toHaveCount(0);
+});
+
+When('I continue shopping', async ({ ui }) => {
+  await ui.cart.continueShopping.click();
+});
+
+When('I reload the page', async ({ page }) => {
+  await page.reload();
 });
 ```
 
 ```ts
 // steps/checkout.steps.ts
-import { createBdd } from 'playwright-bdd';
+import { createBdd, type DataTable } from 'playwright-bdd';
 import { expect, test } from '../fixtures/test';
-import { checkoutInfo, products } from '../test-data/checkout';
+import { checkoutInfo } from '../test-data/checkout';
 
-const { Given, When, Then } = createBdd(test);
+const { When, Then } = createBdd(test);
 
 const toAmount = (text: string | null) => Number.parseFloat((text ?? '').replace(/[^0-9.]/g, ''));
-
-Given('I have the backpack in my cart', async ({ ui }) => {
-  await ui.catalog.addProduct(products.backpack.slug).click();
-  await ui.catalog.cart.click();
-  await expect(ui.cart.heading).toBeVisible();
-  await expect(ui.cart.items).toHaveCount(1);
-  await expect(ui.cart.item(products.backpack.name)).toBeVisible();
-});
 
 When('I start checkout', async ({ ui }) => {
   await ui.cart.checkout.click();
@@ -467,7 +762,26 @@ When('I enter valid checkout information', async ({ ui }) => {
   await ui.checkout.postalCode.fill(checkoutInfo.postalCode);
   await ui.checkout.continue.click();
   await expect(ui.checkout.overview).toBeVisible();
-  await expect(ui.cart.item(products.backpack.name)).toBeVisible();
+});
+
+When('I cancel checkout', async ({ ui }) => {
+  await ui.checkout.cancel.click();
+});
+
+Then('the order overview should list:', async ({ ui }, table: DataTable) => {
+  const names = await ui.checkout.itemNames.allTextContents();
+  const prices = await ui.checkout.itemPrices.allTextContents();
+  expect(names.map((name, index) => ({ name, price: prices[index] }))).toEqual(table.hashes());
+});
+
+Then('the item total should be {string}', async ({ ui }, amount: string) => {
+  await expect(ui.checkout.itemTotal).toHaveText(`Item total: ${amount}`);
+});
+
+Then('the tax should be 8% of the item total', async ({ ui }) => {
+  const itemTotal = toAmount(await ui.checkout.itemTotal.textContent());
+  const tax = toAmount(await ui.checkout.tax.textContent());
+  expect(tax).toBeCloseTo(itemTotal * 0.08, 2);
 });
 
 Then('the order total should equal the item total plus tax', async ({ ui }) => {
@@ -479,8 +793,20 @@ Then('the order total should equal the item total plus tax', async ({ ui }) => {
   expect(total).toBeCloseTo(itemTotal + tax, 2);
 });
 
+Then('the payment information should be {string}', async ({ ui }, value: string) => {
+  await expect(ui.checkout.paymentInfo).toHaveText(value);
+});
+
+Then('the shipping information should be {string}', async ({ ui }, value: string) => {
+  await expect(ui.checkout.shippingInfo).toHaveText(value);
+});
+
 When('I finish the order', async ({ ui }) => {
   await ui.checkout.finish.click();
+});
+
+When('I go back home', async ({ ui }) => {
+  await ui.checkout.backHome.click();
 });
 
 Then('I should see the order confirmation', async ({ page, ui }) => {
@@ -494,7 +820,12 @@ Then('I should see the checkout error {string}', async ({ page, ui }, message: s
 });
 ```
 
-Keep steps focused; avoid a single generic step that performs the entire scenario invisibly. Steps that change state (adding or removing a product, opening a page) wait for the visible result, and assertions compare exact text, URLs, and full sort orders so a failure shows what actually differed.
+Keep steps focused; avoid a single generic step that performs the entire scenario invisibly. Steps that change state (adding or removing a product, opening a page) wait for the visible result, and assertions compare exact text, URLs, and full lists so a failure shows what actually differed.
+
+Two Sauce Demo behaviors to keep in mind:
+
+- Opening a product changes the URL before the details page renders, so the step waits for a details-only element (**Back to products**) before reading the product name.
+- **Reset App State** clears the cart badge but can leave **Remove** buttons on screen until the page re-renders, so the scenario checks the badge and the cart page rather than the catalog buttons.
 
 ## 8. Playwright BDD configuration
 

@@ -26,6 +26,12 @@ Feature: Login
     When I log out
     Then I should be on the login page
 
+  Scenario: A logged out user cannot return to the catalog
+    Given I am signed in as the standard user
+    And I log out
+    When I open the inventory page without signing in
+    Then I should see the login error "Epic sadface: You can only access '/inventory.html' when you are logged in."
+
   Scenario: Protected pages require sign in
     When I open the inventory page without signing in
     Then I should see the login error "Epic sadface: You can only access '/inventory.html' when you are logged in."

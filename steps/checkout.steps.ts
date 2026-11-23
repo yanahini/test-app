@@ -1,18 +1,10 @@
-import { createBdd } from 'playwright-bdd';
+import { createBdd, type DataTable } from 'playwright-bdd';
 import { expect, test } from '../fixtures/test';
-import { checkoutInfo, products } from '../test-data/checkout';
+import { checkoutInfo } from '../test-data/checkout';
 
-const { Given, When, Then } = createBdd(test);
+const { When, Then } = createBdd(test);
 
 const toAmount = (text: string | null) => Number.parseFloat((text ?? '').replace(/[^0-9.]/g, ''));
-
-Given('I have the backpack in my cart', async ({ ui }) => {
-  await ui.catalog.addProduct(products.backpack.slug).click();
-  await ui.catalog.cart.click();
-  await expect(ui.cart.heading).toBeVisible();
-  await expect(ui.cart.items).toHaveCount(1);
-  await expect(ui.cart.item(products.backpack.name)).toBeVisible();
-});
 
 When('I start checkout', async ({ ui }) => {
   await ui.cart.checkout.click();
@@ -37,7 +29,26 @@ When('I enter valid checkout information', async ({ ui }) => {
   await ui.checkout.postalCode.fill(checkoutInfo.postalCode);
   await ui.checkout.continue.click();
   await expect(ui.checkout.overview).toBeVisible();
-  await expect(ui.cart.item(products.backpack.name)).toBeVisible();
+});
+
+When('I cancel checkout', async ({ ui }) => {
+  await ui.checkout.cancel.click();
+});
+
+Then('the order overview should list:', async ({ ui }, table: DataTable) => {
+  const names = await ui.checkout.itemNames.allTextContents();
+  const prices = await ui.checkout.itemPrices.allTextContents();
+  expect(names.map((name, index) => ({ name, price: prices[index] }))).toEqual(table.hashes());
+});
+
+Then('the item total should be {string}', async ({ ui }, amount: string) => {
+  await expect(ui.checkout.itemTotal).toHaveText(`Item total: ${amount}`);
+});
+
+Then('the tax should be 8% of the item total', async ({ ui }) => {
+  const itemTotal = toAmount(await ui.checkout.itemTotal.textContent());
+  const tax = toAmount(await ui.checkout.tax.textContent());
+  expect(tax).toBeCloseTo(itemTotal * 0.08, 2);
 });
 
 Then('the order total should equal the item total plus tax', async ({ ui }) => {
@@ -49,8 +60,20 @@ Then('the order total should equal the item total plus tax', async ({ ui }) => {
   expect(total).toBeCloseTo(itemTotal + tax, 2);
 });
 
+Then('the payment information should be {string}', async ({ ui }, value: string) => {
+  await expect(ui.checkout.paymentInfo).toHaveText(value);
+});
+
+Then('the shipping information should be {string}', async ({ ui }, value: string) => {
+  await expect(ui.checkout.shippingInfo).toHaveText(value);
+});
+
 When('I finish the order', async ({ ui }) => {
   await ui.checkout.finish.click();
+});
+
+When('I go back home', async ({ ui }) => {
+  await ui.checkout.backHome.click();
 });
 
 Then('I should see the order confirmation', async ({ page, ui }) => {

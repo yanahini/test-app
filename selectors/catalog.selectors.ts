@@ -1,14 +1,21 @@
 import type { Page } from '@playwright/test';
 
-export const catalogSelectors = (page: Page) => ({
-  title: page.getByText('Products', { exact: true }),
-  sort: page.locator('[data-test="product-sort-container"]'),
-  cart: page.locator('.shopping_cart_link'),
-  cartBadge: page.locator('.shopping_cart_badge'),
-  product: (name: string) => page.getByText(name, { exact: true }),
-  addProduct: (slug: string) => page.locator(`[data-test="add-to-cart-${slug}"]`),
-  removeProduct: (slug: string) => page.locator(`[data-test="remove-${slug}"]`),
-  items: page.locator('.inventory_item'),
-  itemPrices: page.locator('.inventory_item_price'),
-  itemNames: page.locator('.inventory_item_name'),
-});
+export const catalogSelectors = (page: Page) => {
+  const productCard = (name: string) =>
+    page.locator('[data-test="inventory-item"]').filter({ has: page.getByText(name, { exact: true }) });
+
+  return {
+    title: page.getByText('Products', { exact: true }),
+    sort: page.locator('[data-test="product-sort-container"]'),
+    activeSort: page.locator('[data-test="active-option"]'),
+    cart: page.locator('[data-test="shopping-cart-link"]'),
+    cartBadge: page.locator('[data-test="shopping-cart-badge"]'),
+    product: (name: string) => page.locator('[data-test="inventory-item-name"]').getByText(name, { exact: true }),
+    productCard,
+    addProduct: (name: string) => productCard(name).getByRole('button', { name: 'Add to cart' }),
+    removeProduct: (name: string) => productCard(name).getByRole('button', { name: 'Remove' }),
+    items: page.locator('[data-test="inventory-item"]'),
+    itemPrices: page.locator('[data-test="inventory-item-price"]'),
+    itemNames: page.locator('[data-test="inventory-item-name"]'),
+  };
+};

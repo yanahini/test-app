@@ -36,11 +36,6 @@ Given('I am signed in as the standard user', async ({ page, ui, signIn }) => {
   await expect(ui.catalog.title).toBeVisible();
 });
 
-When('I log out', async ({ ui }) => {
-  await ui.auth.menu.click();
-  await ui.auth.logout.click();
-});
-
 Then('I should be on the login page', async ({ page, ui }) => {
   await expect(page).toHaveURL(/saucedemo\.com\/$/);
   await expect(ui.auth.login).toBeVisible();
